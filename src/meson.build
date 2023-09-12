@@ -171,6 +171,7 @@ _srcs = [
     'io/LoadOptions.cpp',
     'lp_data/Highs.cpp',
     'lp_data/HighsCallback.cpp',
+    'lp_data/HighsColOracle.cpp',
     'lp_data/HighsDebug.cpp',
     'lp_data/HighsInfo.cpp',
     'lp_data/HighsInfoDebug.cpp',

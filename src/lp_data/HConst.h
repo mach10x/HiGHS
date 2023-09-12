@@ -209,6 +209,13 @@ enum class HighsModelStatus {
   kMax = kInterrupt
 };
 
+enum HighsColOracleType : int {
+  kHighsColOracleMin = 0,
+  kHighsColOracleDefault = kHighsColOracleMin,
+  kHighsColOracleMax = kHighsColOracleDefault,
+  kNumHighsColOracleType
+};
+
 enum HighsCallbackType : int {
   kHighsCallbackMin = 0,
   kHighsCallbackLogging = kHighsCallbackMin,

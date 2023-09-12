@@ -17,6 +17,7 @@
 #include <sstream>
 
 #include "lp_data/HighsCallback.h"
+#include "lp_data/HighsColOracle.h"
 #include "lp_data/HighsLpUtils.h"
 #include "lp_data/HighsRanging.h"
 #include "lp_data/HighsSolutionDebug.h"
@@ -1020,6 +1021,14 @@ class Highs {
                           void* user_callback_data = nullptr);
 
   /**
+   * @brief Set the (level 1) column oracle method to use for HiGHS
+   */
+  HighsStatus setColOracle(void (*col_oracle)(const int, const char*,
+					      const HighsColOracleDataOut*,
+					      HighsColOracleDataIn*, void*),
+			   void* user_col_oracle_data = nullptr);
+
+  /**
    * @brief Start callback of given type
    */
   HighsStatus startCallback(const int callback_type);
@@ -1267,6 +1276,7 @@ class Highs {
   HighsTimer timer_;
 
   HighsCallback callback_;
+  HighsColOracle col_oracle_;
   HighsOptions options_;
   HighsInfo info_;
   HighsRanging ranging_;
