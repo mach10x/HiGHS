@@ -27,7 +27,7 @@ struct HighsColOracleDataIn {
 
 struct HighsColOracle {
   void (*col_oracle)(const int, const char*, const HighsColOracleDataOut*,
-                        HighsColOracleDataIn*, void*) = nullptr;
+                     HighsColOracleDataIn*, void*) = nullptr;
   void* col_oracle_data = nullptr;
   std::vector<bool> active;
   HighsColOracleDataOut data_out;

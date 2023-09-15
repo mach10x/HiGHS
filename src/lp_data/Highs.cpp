@@ -1917,17 +1917,14 @@ HighsStatus Highs::stopCallback(const int callback_type) {
   return HighsStatus::kOk;
 }
 
-HighsStatus Highs::setColOracle(
-    void (*col_oracle)(const int, const char*, const HighsColOracleDataOut*,
-                          HighsColOracleDataIn*, void*),
-    void* col_oracle_data) {
+HighsStatus Highs::setColOracle(void (*col_oracle)(const int, const char*,
+                                                   const HighsColOracleDataOut*,
+                                                   HighsColOracleDataIn*,
+                                                   void*),
+                                void* col_oracle_data) {
   this->col_oracle_.clear();
   this->col_oracle_.col_oracle = col_oracle;
   this->col_oracle_.col_oracle_data = col_oracle_data;
-
-  options_.log_options.col_oracle = this->col_oracle_.col_oracle;
-  options_.log_options.col_oracle_data = this->col_oracle_.col_oracle_data;
-  options_.log_options.col_oracle_active = false;
   return HighsStatus::kOk;
 }
 
