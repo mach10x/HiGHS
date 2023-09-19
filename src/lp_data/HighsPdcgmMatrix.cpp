@@ -8,17 +8,10 @@
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/**@file lp_data/HighsPdcgm.h
+/**@file lp_data/HighsPdcgmMatrix.h
  * @brief
  */
-#ifndef LP_DATA_HIGHS_PDCGM_H_
-#define LP_DATA_HIGHS_PDCGM_H_
 
 #include "lp_data/HighsPdcgmMatrix.h"
-class HighsPdcgm {
- public:
-  HighsPdcgm() { clear(); }
-  void clear();
+void HighsPdcgmMatrix::clear() {
 };
-
-#endif

@@ -91,6 +91,7 @@ if(NOT FAST_BUILD)
     lp_data/HighsLpUtils.cpp
     lp_data/HighsModelUtils.cpp
     lp_data/HighsPdcgm.cpp
+    lp_data/HighsPdcgmMatrix.cpp
     lp_data/HighsRanging.cpp
     lp_data/HighsSolution.cpp
     lp_data/HighsSolutionDebug.cpp
@@ -194,6 +195,7 @@ if(NOT FAST_BUILD)
     lp_data/HighsAnalysis.h
     lp_data/HighsCallback.h
     lp_data/HighsColOracle.h
+    lp_data/HighsCallbackStruct.h
     lp_data/HighsDebug.h
     lp_data/HighsInfo.h
     lp_data/HighsInfoDebug.h
@@ -203,6 +205,7 @@ if(NOT FAST_BUILD)
     lp_data/HighsModelUtils.h
     lp_data/HighsOptions.h
     lp_data/HighsPdcgm.h
+    lp_data/HighsPdcgmMatrix.h
     lp_data/HighsRanging.h
     lp_data/HighsRuntimeOptions.h
     lp_data/HighsSolution.h
@@ -457,6 +460,7 @@ else()
     lp_data/HighsLpUtils.cpp
     lp_data/HighsModelUtils.cpp
     lp_data/HighsPdcgm.cpp
+    lp_data/HighsPdcgmMatrix.cpp
     lp_data/HighsRanging.cpp
     lp_data/HighsSolution.cpp
     lp_data/HighsSolutionDebug.cpp
@@ -607,6 +611,7 @@ else()
     lp_data/HighsAnalysis.h
     lp_data/HighsCallback.h
     lp_data/HighsColOracle.h
+    lp_data/HighsCallbackStruct.h
     lp_data/HighsDebug.h
     lp_data/HighsInfo.h
     lp_data/HighsInfoDebug.h
@@ -616,6 +621,7 @@ else()
     lp_data/HighsModelUtils.h
     lp_data/HighsOptions.h
     lp_data/HighsPdcgm.h
+    lp_data/HighsPdcgmMatrix.h
     lp_data/HighsRanging.h
     lp_data/HighsRuntimeOptions.h
     lp_data/HighsSolution.h

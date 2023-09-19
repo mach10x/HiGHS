@@ -181,6 +181,7 @@ _srcs = [
     'lp_data/HighsLpUtils.cpp',
     'lp_data/HighsModelUtils.cpp',
     'lp_data/HighsPdcgm.cpp',
+    'lp_data/HighsPdcgmMatrix.cpp',
     'lp_data/HighsRanging.cpp',
     'lp_data/HighsSolution.cpp',
     'lp_data/HighsSolutionDebug.cpp',
