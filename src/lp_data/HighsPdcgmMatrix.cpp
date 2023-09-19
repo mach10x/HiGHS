@@ -13,5 +13,5 @@
  */
 
 #include "lp_data/HighsPdcgmMatrix.h"
-void HighsPdcgmMatrix::clear() {
+void HighsPdcgm_SMatrix_CW::clear() {
 };

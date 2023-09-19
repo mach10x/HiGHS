@@ -17,9 +17,9 @@
 #include "util/HighsInt.h"
 #include <vector>
 
-class HighsPdcgmMatrix {
+class HighsPdcgm_SMatrix_CW {
  public:
-  HighsPdcgmMatrix() { clear(); }
+  HighsPdcgm_SMatrix_CW() { clear(); }
   HighsInt m_m{};
   HighsInt m_n{};
   HighsInt m_nz{};
