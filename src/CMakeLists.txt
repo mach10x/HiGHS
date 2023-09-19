@@ -90,6 +90,7 @@ if(NOT FAST_BUILD)
     lp_data/HighsLp.cpp
     lp_data/HighsLpUtils.cpp
     lp_data/HighsModelUtils.cpp
+    lp_data/HighsPdcgm.cpp
     lp_data/HighsRanging.cpp
     lp_data/HighsSolution.cpp
     lp_data/HighsSolutionDebug.cpp
@@ -201,6 +202,7 @@ if(NOT FAST_BUILD)
     lp_data/HighsLpUtils.h
     lp_data/HighsModelUtils.h
     lp_data/HighsOptions.h
+    lp_data/HighsPdcgm.h
     lp_data/HighsRanging.h
     lp_data/HighsRuntimeOptions.h
     lp_data/HighsSolution.h
@@ -454,6 +456,7 @@ else()
     lp_data/HighsLp.cpp
     lp_data/HighsLpUtils.cpp
     lp_data/HighsModelUtils.cpp
+    lp_data/HighsPdcgm.cpp
     lp_data/HighsRanging.cpp
     lp_data/HighsSolution.cpp
     lp_data/HighsSolutionDebug.cpp
@@ -612,6 +615,7 @@ else()
     lp_data/HighsLpUtils.h
     lp_data/HighsModelUtils.h
     lp_data/HighsOptions.h
+    lp_data/HighsPdcgm.h
     lp_data/HighsRanging.h
     lp_data/HighsRuntimeOptions.h
     lp_data/HighsSolution.h
