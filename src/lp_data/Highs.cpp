@@ -1927,6 +1927,8 @@ HighsStatus Highs::setColOracle(void (*col_oracle)(const int, const char*,
   this->col_oracle_.clear();
   this->col_oracle_.col_oracle = col_oracle;
   this->col_oracle_.col_oracle_data = col_oracle_data;
+  this->col_oracle_.active[kHighsColOraclePdcgmInitialise] = true;
+  this->col_oracle_.active[kHighsColOraclePdcgmExecute] = true;
   return HighsStatus::kOk;
 }
 

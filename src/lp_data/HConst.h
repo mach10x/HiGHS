@@ -211,8 +211,9 @@ enum class HighsModelStatus {
 
 enum HighsColOracleType : int {
   kHighsColOracleMin = 0,
-  kHighsColOracleDefault = kHighsColOracleMin,
-  kHighsColOracleMax = kHighsColOracleDefault,
+  kHighsColOraclePdcgmInitialise = kHighsColOracleMin,
+  kHighsColOraclePdcgmExecute,
+  kHighsColOracleMax = kHighsColOraclePdcgmExecute,
   kNumHighsColOracleType
 };
 

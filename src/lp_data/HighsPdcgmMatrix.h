@@ -14,9 +14,39 @@
 #ifndef LP_DATA_HIGHS_PDCGMMATRIX_H_
 #define LP_DATA_HIGHS_PDCGMMATRIX_H_
 
+#include "util/HighsInt.h"
+#include <vector>
+
 class HighsPdcgmMatrix {
  public:
   HighsPdcgmMatrix() { clear(); }
+  HighsInt m_m{};
+  HighsInt m_n{};
+  HighsInt m_nz{};
+
+  HighsInt m_max_m{};
+  HighsInt m_max_n{};
+  HighsInt m_max_nz{};
+
+  std::vector<double> m_obj{};
+
+  std::vector<double> m_primal_lb{};
+  std::vector<double> m_primal_ub{};
+  std::vector<double> m_primal_lb_fxd{};
+  std::vector<double> m_primal_ub_fxd{};
+
+  std::vector<double> m_dual_lb{};
+  std::vector<double> m_dual_ub{};
+  std::vector<double> m_dual_lb_fxd{};
+  std::vector<double> m_dual_ub_fxd{};
+
+  std::vector<double> m_coeff{};
+  std::vector<HighsInt> m_rwnmbs{};
+  std::vector<HighsInt> m_clpnts{};
+
+  std::vector<double> m_rhs{};
+  std::vector<char> m_constr_type{};
+
   void clear();
 };
 
