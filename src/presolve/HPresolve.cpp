@@ -447,29 +447,47 @@ bool HPresolve::debugColImpliedBoundsNotUpToDate(HighsInt row, HighsInt col,
   // when the corresponding rows stored in 'colLowerSource' or
   // 'colUpperSource' are modified (e.g., non-zeros added by
   // substitution or constraint bounds modified)?
+  const HighsInt check_col = 6; 
+  const HighsInt check_row = 1;
+  bool notUpToDate = false;
+  if (col != check_col || row != check_row) return notUpToDate;
+  printf("debugColImpliedBoundsNotUpToDate(%d, %d, %g);\n",
+	 int(row), int(col), val);
+  assert(colsize[col] == 1);
   bool oldColLowerUpToDate = true;
   bool oldColUpperUpToDate = true;
   // save old implied bounds
   double oldImplLower = implColLower[col];
   double oldImplUpper = implColUpper[col];
-  bool notUpToDate = false;
-  if (colsize[col] == 1) {
-    if ((colLowerSource[col] == row) || (colUpperSource[col] == row)) {
-      // set implied bounds to infinity
+  HighsInt oldImplLowerSource = colLowerSource[col];
+  HighsInt oldImplUpperSource = colUpperSource[col];
+
+  if ((colLowerSource[col] == row) || (colUpperSource[col] == row)) {
+    // set implied bounds to infinity
+    if (colLowerSource[col] == row)
       changeImplColLower(col, -kHighsInf, -1);
+    if (colUpperSource[col] == row)
       changeImplColUpper(col, kHighsInf, -1);
-      // recompute implied bounds
-      updateColImpliedBounds(row, col, val);
-      // check if bounds were correct / up-to-date when entering this method
-      oldColLowerUpToDate =
-          ((oldImplLower == -kHighsInf) && (implColLower[col] == -kHighsInf)) ||
-          (abs(oldImplLower - implColLower[col]) <= primal_feastol);
-      oldColUpperUpToDate =
-          ((oldImplUpper == kHighsInf) && (implColUpper[col] == kHighsInf)) ||
-          (abs(oldImplUpper - implColUpper[col]) <= primal_feastol);
-      notUpToDate = (!oldColLowerUpToDate) || (!oldColUpperUpToDate);
+    // recompute implied bounds
+    updateColImpliedBounds(row, col, val);
+    // check if bounds were correct / up-to-date when entering this method
+    const double dl_lower = std::fabs(oldImplLower - implColLower[col]);
+    const double dl_upper = std::fabs(oldImplUpper - implColUpper[col]);
+    oldColLowerUpToDate = 
+      ((oldImplLower == -kHighsInf) && (implColLower[col] == -kHighsInf)) ||
+      (dl_lower <= primal_feastol);
+    oldColUpperUpToDate =
+      ((oldImplUpper == kHighsInf) && (implColUpper[col] == kHighsInf)) ||
+      (dl_upper <= primal_feastol);
+    notUpToDate = (!oldColLowerUpToDate) || (!oldColUpperUpToDate);
+    if (notUpToDate) {
+      printf("ColImpliedBoundsNotUpToDate for row = %d; col = %d: lower(%g, %g, %g); upper(%g, %g, %g)\n",
+	     int(row), int(col),
+	     oldImplLower, implColLower[col], dl_lower,
+	     oldImplUpper, implColUpper[col], dl_upper);
     }
   }
+
   return notUpToDate;
 }
 
@@ -483,7 +501,7 @@ void HPresolve::updateRowDualImpliedBounds(HighsInt row, HighsInt col,
   // column bounds and treat them as if they are infinite
 
   const bool check_col_implied_bounds_not_up_to_date = true;
-  if (check_col_implied_bounds_not_up_to_date) {
+  if (colsize[col] == 1 && check_col_implied_bounds_not_up_to_date) {
     bool notUpToDate = debugColImpliedBoundsNotUpToDate(row, col, val);
     if (notUpToDate) {
       printf("HPresolve::updateRowDualImpliedBounds: notUpToDate\n");
@@ -3968,7 +3986,7 @@ HPresolve::Result HPresolve::colPresolve(HighsPostsolveStack& postsolve_stack,
          model->col_upper_[col] != kHighsInf) &&
         model->col_upper_[col] - model->col_lower_[col] > 0.5) {
       // substitute with the bound that is smaller in magnitude and only
-      // suibstitute if bound is not large for an integer
+      // substitute if bound is not large for an integer
       if (std::abs(model->col_upper_[col]) > std::abs(model->col_lower_[col])) {
         if (std::abs(model->col_lower_[col]) < 1000.5)
           transformColumn(postsolve_stack, col, 1.0, model->col_lower_[col]);
