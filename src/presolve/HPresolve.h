@@ -155,6 +155,7 @@ class HPresolve {
 
   void updateColImpliedBounds(HighsInt row, HighsInt col, double val);
 
+  bool debugColImpliedBoundsNotUpToDate(HighsInt row, HighsInt col, double val);
   void updateRowDualImpliedBounds(HighsInt row, HighsInt col, double val);
 
   bool rowCoefficientsIntegral(HighsInt row, double scale) const;

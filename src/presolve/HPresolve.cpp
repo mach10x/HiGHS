@@ -324,7 +324,7 @@ bool HPresolve::isImpliedInteger(HighsInt col) {
   return true;
 }
 
-void HPresolve::link(HighsInt pos) {
+void HPresolve::link(const HighsInt pos) {
   Anext[pos] = colhead[Acol[pos]];
   Aprev[pos] = -1;
   colhead[Acol[pos]] = pos;
@@ -349,7 +349,7 @@ void HPresolve::link(HighsInt pos) {
     ++rowsizeImplInt[Arow[pos]];
 }
 
-void HPresolve::unlink(HighsInt pos) {
+void HPresolve::unlink(const HighsInt pos) {
   HighsInt next = Anext[pos];
   HighsInt prev = Aprev[pos];
 
@@ -437,6 +437,42 @@ double HPresolve::getMaxAbsRowVal(HighsInt row) const {
   return maxVal;
 }
 
+bool HPresolve::debugColImpliedBoundsNotUpToDate(HighsInt row, HighsInt col,
+                                                 double val) {
+  // for debugging!  implied upper bound on variable x_6 (computed
+  // using row 1) is incorrect when entering this method.  as a
+  // consequence, this subroutine incorrectly decides that the bounds
+  // on x_6 (singleton!) are redundant and computes incorrect row
+  // duals.  Why are 'implColLower' and 'implColUpper' not re-computed
+  // when the corresponding rows stored in 'colLowerSource' or
+  // 'colUpperSource' are modified (e.g., non-zeros added by
+  // substitution or constraint bounds modified)?
+  bool oldColLowerUpToDate = true;
+  bool oldColUpperUpToDate = true;
+  // save old implied bounds
+  double oldImplLower = implColLower[col];
+  double oldImplUpper = implColUpper[col];
+  bool notUpToDate = false;
+  if (colsize[col] == 1) {
+    if ((colLowerSource[col] == row) || (colUpperSource[col] == row)) {
+      // set implied bounds to infinity
+      changeImplColLower(col, -kHighsInf, -1);
+      changeImplColUpper(col, kHighsInf, -1);
+      // recompute implied bounds
+      updateColImpliedBounds(row, col, val);
+      // check if bounds were correct / up-to-date when entering this method
+      oldColLowerUpToDate =
+          ((oldImplLower == -kHighsInf) && (implColLower[col] == -kHighsInf)) ||
+          (abs(oldImplLower - implColLower[col]) <= primal_feastol);
+      oldColUpperUpToDate =
+          ((oldImplUpper == kHighsInf) && (implColUpper[col] == kHighsInf)) ||
+          (abs(oldImplUpper - implColUpper[col]) <= primal_feastol);
+      notUpToDate = (!oldColLowerUpToDate) || (!oldColUpperUpToDate);
+    }
+  }
+  return notUpToDate;
+}
+
 void HPresolve::updateRowDualImpliedBounds(HighsInt row, HighsInt col,
                                            double val) {
   // propagate implied row dual bound bound
@@ -445,6 +481,16 @@ void HPresolve::updateRowDualImpliedBounds(HighsInt row, HighsInt col,
   // right hand side -cost which becomes a >= constraint with side +cost.
   // Furthermore, we can ignore strictly redundant primal
   // column bounds and treat them as if they are infinite
+
+  const bool check_col_implied_bounds_not_up_to_date = true;
+  if (check_col_implied_bounds_not_up_to_date) {
+    bool notUpToDate = debugColImpliedBoundsNotUpToDate(row, col, val);
+    if (notUpToDate) {
+      printf("HPresolve::updateRowDualImpliedBounds: notUpToDate\n");
+      assert(!notUpToDate);
+    }
+  }
+
   double impliedMargin = colsize[col] != 1 ? primal_feastol : -primal_feastol;
   double dualRowLower =
       (model->col_lower_[col] == -kHighsInf) ||
