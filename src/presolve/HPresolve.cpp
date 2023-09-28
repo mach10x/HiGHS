@@ -451,7 +451,7 @@ bool HPresolve::debugColImpliedBoundsNotUpToDate(HighsInt row, HighsInt col,
   const HighsInt check_row = 1;
   bool notUpToDate = false;
   if (col != check_col || row != check_row) return notUpToDate;
-  printf("debugColImpliedBoundsNotUpToDate(%d, %d, %g);\n",
+  printf("debugColImpliedBoundsNotUpToDate(%d, %d, %g)\n",
 	 int(row), int(col), val);
   assert(colsize[col] == 1);
   bool oldColLowerUpToDate = true;
@@ -2303,9 +2303,6 @@ void HPresolve::substitute(HighsInt row, HighsInt col, double rhs) {
     // updated
     unlink(colpos);
 
-    // printf("\nbefore substitution: ");
-    // debugPrintRow(colrow);
-
     // determine the scale for the substitution row for addition to this row
     double scale = colval * substrowscale;
 
@@ -2332,8 +2329,6 @@ void HPresolve::substitute(HighsInt row, HighsInt col, double rhs) {
       equations.erase(eqiters[colrow]);
       eqiters[colrow] = equations.emplace(rowsize[colrow], colrow).first;
     }
-    // printf("after substitution: ");
-    // debugPrintRow(colrow);
   }
 
   assert(colsize[col] == 1);
@@ -2432,7 +2427,7 @@ HPresolve::Result HPresolve::doubletonEq(HighsPostsolveStack& postsolve_stack,
   assert(model->row_lower_[row] == model->row_upper_[row]);
 
   // printf("doubleton equation: ");
-  // debugPrintRow(row);
+  // debugPrintRow(postsolve_stack, row);
   HighsInt nzPos1 = rowroot[row];
   HighsInt nzPos2 = ARright[nzPos1] != -1 ? ARright[nzPos1] : ARleft[nzPos1];
 
@@ -2628,7 +2623,7 @@ HPresolve::Result HPresolve::singletonRow(HighsPostsolveStack& postsolve_stack,
   double val = Avalue[nzPos];
 
   // printf("singleton row\n");
-  // debugPrintRow(row);
+  // debugPrintRow(postsolve_stack, row);
   // delete row singleton nonzero directly, we have all information that we need
   // in local variables
   markRowDeleted(row);
@@ -2953,7 +2948,7 @@ HPresolve::Result HPresolve::rowPresolve(HighsPostsolveStack& postsolve_stack,
   }
 
   // printf("row presolve: ");
-  // debugPrintRow(row);
+  // debugPrintRow(postsolve_stack, row);
   double impliedRowUpper = impliedRowBounds.getSumUpper(row);
   double impliedRowLower = impliedRowBounds.getSumLower(row);
 
@@ -4852,8 +4847,6 @@ void HPresolve::substitute(HighsInt substcol, HighsInt staycol, double offset,
       model->row_upper_[colrow] -= colval * offset;
 
     addToMatrix(colrow, staycol, scale * colval);
-    // printf("after substitution: ");
-    // debugPrintRow(colrow);
 
     // check if this is an equation row and it now has a different size
     if (model->row_lower_[colrow] == model->row_upper_[colrow] &&
