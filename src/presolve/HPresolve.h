@@ -155,7 +155,6 @@ class HPresolve {
 
   void updateColImpliedBounds(HighsInt row, HighsInt col, double val);
 
-  bool debugColImpliedBoundsNotUpToDate(HighsInt row, HighsInt col, double val);
   void updateRowDualImpliedBounds(HighsInt row, HighsInt col, double val);
 
   bool rowCoefficientsIntegral(HighsInt row, double scale) const;
@@ -179,6 +178,9 @@ class HPresolve {
 
 #ifndef NDEBUG
   void debugPrintRow(HighsPostsolveStack& postsolve_stack, HighsInt row);
+  void debugReportRowWrtCol(const HighsPostsolveStack& postsolve_stack,
+			    const HighsInt row, const HighsInt col, const std::string message = "");
+  bool debugColImpliedBoundsNotUpToDate(HighsInt row, HighsInt col, double val);
 #endif
 
   HighsInt findNonzero(HighsInt row, HighsInt col);

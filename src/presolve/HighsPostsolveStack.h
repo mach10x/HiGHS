@@ -251,11 +251,19 @@ class HighsPostsolveStack {
 
  public:
   HighsInt getOrigRowIndex(HighsInt row) const {
+#ifndef NDEBUG
+    const bool row_ok = row < (HighsInt)origRowIndex.size();
+    if (!row_ok) return -1;
+#endif
     assert(row < (HighsInt)origRowIndex.size());
     return origRowIndex[row];
   }
 
   HighsInt getOrigColIndex(HighsInt col) const {
+#ifndef NDEBUG
+    const bool col_ok = col < (HighsInt)origColIndex.size();
+    if (!col_ok) return -1;
+#endif
     assert(col < (HighsInt)origColIndex.size());
     return origColIndex[col];
   }
