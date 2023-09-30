@@ -181,6 +181,7 @@ class HPresolve {
   void debugReportRowWrtCol(const HighsPostsolveStack& postsolve_stack,
 			    const HighsInt row, const HighsInt col, const std::string message = "");
   bool debugColImpliedBoundsNotUpToDate(HighsInt row, HighsInt col, double val);
+  bool debugCheckColImpliedBoundsOk(HighsPostsolveStack& postsolve_stack);
 #endif
 
   HighsInt findNonzero(HighsInt row, HighsInt col);

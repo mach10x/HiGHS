@@ -131,6 +131,7 @@ if(NOT FAST_BUILD)
     presolve/HighsSymmetry.cpp
     presolve/HPresolve.cpp
     presolve/HPresolveAnalysis.cpp
+    presolve/HPresolveDebug.cpp
     presolve/PresolveComponent.cpp
     qpsolver/a_asm.cpp
     qpsolver/a_quass.cpp
@@ -495,6 +496,7 @@ else()
     presolve/HighsSymmetry.cpp
     presolve/HPresolve.cpp
     presolve/HPresolveAnalysis.cpp
+    presolve/HPresolveDebug.cpp
     presolve/PresolveComponent.cpp
     qpsolver/a_asm.cpp
     qpsolver/a_quass.cpp
