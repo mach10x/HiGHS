@@ -4070,12 +4070,16 @@ HPresolve::Result HPresolve::presolve(HighsPostsolveStack& postsolve_stack) {
             applyConflictGraphSubstitutions(postsolve_stack));
       }
 
+#ifndef NDEBUG
       debugReportRowWrtCol(postsolve_stack, 1, 6, "Before aggregator\n");
+#endif
 
       if (analysis_.allow_rule_[kPresolveRuleAggregator])
         HPRESOLVE_CHECKED_CALL(aggregator(postsolve_stack));
 
+#ifndef NDEBUG
       debugReportRowWrtCol(postsolve_stack, 1, 6, "After aggregator\n");
+#endif
       if (problemSizeReduction() > 0.05) continue;
 
       if (trySparsify) {
