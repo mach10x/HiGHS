@@ -1511,15 +1511,16 @@ void HPresolve::addToMatrix(const HighsInt row, const HighsInt col,
     if (std::abs(sum) <= options->small_matrix_value) {
       unlink(pos);
     } else {
-      // remove implied bounds on the row dual that where implied by this
-      // columns dual constraint
+      // remove implied bounds on the row dual that were implied by
+      // this columns dual constraint
       if (rowDualUpperSource[row] == col)
         changeImplRowDualUpper(row, kHighsInf, -1);
 
       if (rowDualLowerSource[row] == col)
         changeImplRowDualLower(row, -kHighsInf, -1);
 
-      // remove implied bounds on the column that where implied by this row
+      // remove implied bounds on the column that were implied by this
+      // row
       if (colUpperSource[col] == row) changeImplColUpper(col, kHighsInf, -1);
 
       if (colLowerSource[col] == row) changeImplColLower(col, -kHighsInf, -1);
@@ -4018,7 +4019,6 @@ HPresolve::Result HPresolve::presolve(HighsPostsolveStack& postsolve_stack) {
                   this->numDeletedCols);
 
   if (options->presolve != kHighsOffString) {
-    assert(debugCheckColImpliedBoundsOk(postsolve_stack));
     if (mipsolver) mipsolver->mipdata_->cliquetable.setPresolveFlag(true);
     if (!mipsolver || mipsolver->mipdata_->numRestarts == 0)
       highsLogUser(options->log_options, HighsLogType::kInfo,

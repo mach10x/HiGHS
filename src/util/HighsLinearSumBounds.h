@@ -21,6 +21,34 @@
 #include "lp_data/HConst.h"
 #include "util/HighsCDouble.h"
 
+// Used to keep track of the bounds on row sums (activities) with
+// respect to both the implied bounds [sumLower and sumUpper] and
+// original bounds [sumLowerOrig and sumUpperOrig]
+//
+// These sums are only taken over their finite terms so that (1) when
+// infinite terms become finite the sums can be updated and (2) when
+// implied column bounds are computed for infinite terms, the correct
+// "residual" sum is available.
+//
+// This is achieved by keeping a record of the number of infinite
+// terms [numInfSumLower and numInfSumUpper] and [numInfSumLowerOrig
+// and numInfSumUpperOrig]
+//
+// The residual sums with respect to a variable (and corresponding
+// coefficient) are returned by getResidualSumLower/Upper(Orig)
+//
+// When the number of infinite terms exceeds 1 then, even when
+// excluding the column whose implied bound is being computed, the
+// residual sum returned is infinite
+//
+// When the number of infinite terms is 1, then a finite sum is
+// returned if the variable corresponsd to the infinite term,
+// otherwise residual sum returned is infinite
+//
+// When the number of infinite terms is 0, a finite sum is returned
+//
+// ToDo Document the role of "source"
+
 class HighsLinearSumBounds {
   std::vector<HighsCDouble> sumLowerOrig;
   std::vector<HighsCDouble> sumUpperOrig;
