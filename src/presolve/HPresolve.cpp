@@ -1504,15 +1504,43 @@ void HPresolve::addToMatrix(const HighsInt row, const HighsInt col,
       Acol[pos] = col;
       Aprev[pos] = -1;
     }
-
+    const bool fix_1137 = true;
+    if (fix_1137) {
+      // Surely a new value in a source row can affect the implied
+      // column bounds, so trap for it and invalidate the implied column
+      // bounds
+      assert(colUpperSource[col] != row);
+      assert(colLowerSource[col] != row);
+      if (colUpperSource[col] == row) {
+	printf("HPresolve::addToMatrix: Invalidating implied column upper bound for col %d\n", int(col));
+	changeImplColUpper(col, kHighsInf, -1);
+      }
+      if (colLowerSource[col] == row) {
+	printf("HPresolve::addToMatrix: Invalidating implied column lower bound for col %d\n", int(col));
+	changeImplColLower(col, -kHighsInf, -1);
+      }
+      // Surely a new entry in a row cannot be the source of its dual
+      // bounds
+      assert(rowDualUpperSource[row] != col);
+      assert(rowDualLowerSource[row] != col);
+    }
     link(pos);
   } else {
     double sum = Avalue[pos] + val;
     if (std::abs(sum) <= options->small_matrix_value) {
+      // HPresolve::unlink
+      //
+      // removes implied bounds on the row dual that were implied by
+      // this column's dual constraint
+      //
+      // removes implied bounds on the column that were implied by
+      // this row
+      //
+      // removes impliedRowBounds and impliedDualRowBounds
       unlink(pos);
     } else {
       // remove implied bounds on the row dual that were implied by
-      // this columns dual constraint
+      // this column's dual constraint
       if (rowDualUpperSource[row] == col)
         changeImplRowDualUpper(row, kHighsInf, -1);
 
@@ -2223,6 +2251,28 @@ void HPresolve::substitute(HighsInt row, HighsInt col, double rhs) {
     if (row == colrow) continue;
 
     assert(findNonzero(colrow, col) != -1);
+
+    const bool fix_1137 = true;
+    if (fix_1137) {
+      // Invalidate implied bounds on other columns for which this row
+      // is the source
+      for (const HighsSliceNonzero& nonzero : getSortedRowVector(colrow)) {
+	HighsInt fix_1137_col = nonzero.index();
+	//	assert(rowDualUpperSource[colrow] != fix_1137_col);
+	//	assert(rowDualLowerSource[colrow] != fix_1137_col);
+
+	//	assert(colUpperSource[fix_1137_col] != colrow);
+	//	assert(colLowerSource[fix_1137_col] != colrow);
+	if (colUpperSource[fix_1137_col] == colrow) {
+	printf("HPresolve::substitute: Invalidating implied column upper bound for col %d\n", int(fix_1137_col));
+	changeImplColUpper(fix_1137_col, kHighsInf, -1);
+      }
+      if (colLowerSource[fix_1137_col] == colrow) {
+	printf("HPresolve::substitute: Invalidating implied column lower bound for col %d\n", int(fix_1137_col));
+	changeImplColLower(fix_1137_col, -kHighsInf, -1);
+      }
+      }
+    }
 
     // cancels out and bounds of dual row for this column do not need to be
     // updated
