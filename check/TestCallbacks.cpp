@@ -159,12 +159,10 @@ HighsCallbackFunctionType userInterruptCallback =
       }
     };
 
-std::function<void(int, const std::string&, const HighsCallbackDataOut*,
-                   HighsCallbackDataIn*, void*)>
-    userDataCallback = [](int callback_type, const std::string& message,
-                          const HighsCallbackDataOut* data_out,
-                          HighsCallbackDataIn* data_in,
-                          void* user_callback_data) {
+HighsCallbackFunctionType userDataCallback =
+    [](int callback_type, const std::string& message,
+       const HighsCallbackDataOut* data_out, HighsCallbackDataIn* data_in,
+       void* user_callback_data) {
       assert(callback_type == kCallbackMipInterrupt ||
              callback_type == kCallbackMipLogging ||
              callback_type == kCallbackMipImprovingSolution);
@@ -177,6 +175,20 @@ std::function<void(int, const std::string&, const HighsCallbackDataOut*,
             data_out->mip_dual_bound, data_out->mip_primal_bound,
             data_out->mip_gap, data_out->objective_function_value,
             message.c_str());
+    };
+
+HighsCallbackFunctionType userHighsCallCallback =
+    [](int callback_type, const std::string& message,
+       const HighsCallbackDataOut* data_out, HighsCallbackDataIn* data_in,
+       void* user_callback_data) {
+      assert(callback_type == kCallbackSimplexInterrupt);
+      // Highs highs = *(static_cast<Highs*>(user_callback_data));
+      // const char* version = highs.highsVersion();
+
+      //    const char* version = user_callback_data->highsVersion();
+      const char* version = "FRED";
+      if (dev_run)
+        printf("userHighsCallCallback: HiGHS version = %s\n", version);
     };
 
 TEST_CASE("my-callback-logging", "[highs-callback]") {
@@ -331,5 +343,17 @@ TEST_CASE("highs-callback-mip-solution", "[highs-callback]") {
 
   highs.setCallback(userMipSolutionCallback, p_user_callback_data);
   highs.startCallback(kCallbackMipSolution);
+  highs.run();
+}
+
+TEST_CASE("highs-callback-no-highs-call", "[highs-callback]") {
+  std::string filename = std::string(HIGHS_DIR) + "/check/instances/avgas.mps";
+  Highs highs;
+  highs.setOptionValue("output_flag", dev_run);
+  highs.setOptionValue("presolve", kHighsOffString);
+  highs.readModel(filename);
+  void* p_user_callback_data = &highs;
+  highs.setCallback(userHighsCallCallback, p_user_callback_data);
+  highs.startCallback(kCallbackSimplexInterrupt);
   highs.run();
 }
