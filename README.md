@@ -157,21 +157,7 @@ You may also require
 
 #### Testing
 
-The installation can be tested using the example [minimal.py](https://github.com/ERGO-Code/HiGHS/blob/master/examples/minimal.py), yielding the output
-
-    Running HiGHS 1.5.0 [date: 2023-02-22, git hash: d041b3da0]
-    Copyright (c) 2023 HiGHS under MIT licence terms
-    Presolving model
-    2 rows, 2 cols, 4 nonzeros
-    0 rows, 0 cols, 0 nonzeros
-    0 rows, 0 cols, 0 nonzeros
-    Presolve : Reductions: rows 0(-2); columns 0(-2); elements 0(-4) - Reduced to empty
-    Solving the original LP from the solution after postsolve
-    Model   status      : Optimal
-    Objective value     :  1.0000000000e+00
-    HiGHS run time      :          0.00
-
-or the more didactic [call_highs_from_python.py](https://github.com/ERGO-Code/HiGHS/blob/master/examples/call_highs_from_python.py).
+The installation can be tested using the example [call_highs_from_python.py](https://github.com/ERGO-Code/HiGHS/blob/master/examples/call_highs_from_python.py).
 
 #### Google Colab Example
 
