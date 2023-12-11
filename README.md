@@ -25,7 +25,6 @@
   - [Reference](#reference)
 
 ## About HiGHS
------------
 
 HiGHS is a high performance serial and parallel solver for large scale sparse
 linear optimization problems of the form
@@ -49,7 +48,6 @@ Documentation is available at https://ergo-code.github.io/HiGHS/.
 There are various ways to install the HiGHS library. These are detailed below.
 
 ### Precompiled binaries
---------------------
 
 Precompiled static executables are available for a variety of platforms at
 https://github.com/JuliaBinaryWrappers/HiGHSstatic_jll.jl/releases
@@ -59,7 +57,6 @@ _These binaries are provided by the Julia community and are not officially suppo
 See https://ergo-code.github.io/HiGHS/stable/installation/#Precompiled-Binaries.
 
 ### Compilation
----------------
 
 HiGHS uses CMake as build system, and requires at least version 3.15. First setup a build folder and call CMake as follows
 
@@ -95,7 +92,6 @@ HiGHS is installed using the command
 with the optional setting of `--prefix <prefix>  = The installation prefix CMAKE_INSTALL_PREFIX` if it is to be installed anywhere other than the default location.
 
 ### Meson
------
 
 HiGHs can also use the `meson` build interface:
 
@@ -106,7 +102,6 @@ meson test -C bbdir
 
 
 ### Python
------
 
 Installing from PyPI through your Python package manager of choice (e.g., `pip`) will also 
 install the HiGHS library if not already present. HiGHS is available as `highspy` on [PyPi](https://pypi.org/project/highspy/).
