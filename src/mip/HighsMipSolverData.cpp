@@ -1185,8 +1185,8 @@ bool HighsMipSolverData::assessIntegerFeasibleSolution(
   return original_solution_feasible;
 }
 
-bool greater(const std::pair<int, int>& a, const std::pair<int, int>& b) {
-  return a.second > b.second;
+bool greater(const std::pair<double, HighsInt>& a, const std::pair<double, HighsInt>& b) {
+  return a.first > b.first;
 }
 
 bool HighsMipSolverData::oneOptImprovement(std::vector<double>& sol,
@@ -1552,66 +1552,156 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
   // Prepare sets of columns that are integer with
   // negative/non-negative objective change if the value is pushed
   // up or down
-  std::vector<HighsInt> up_negative_objective_change;
-  std::vector<HighsInt> up_non_negative_objective_change;
-  std::vector<HighsInt> down_non_negative_objective_change;
-  std::vector<HighsInt> down_negative_objective_change;
+  std::vector<std::pair<double, HighsInt>> up_negative_objective_change;
+  std::vector<std::pair<double, HighsInt>> up_non_negative_objective_change;
+  std::vector<std::pair<double, HighsInt>> down_non_negative_objective_change;
+  std::vector<std::pair<double, HighsInt>> down_negative_objective_change;
   printf("  Ix        Cost       Lower       Value        Upper\n");
   for (HighsInt integerCol = 0; integerCol < num_integer_col; integerCol++) {
     HighsInt iCol = integer_cols[integerCol];
-    printf("%4d %11.6g %11.6g %11.6g  %11.6g\n", iCol, lp.col_cost_[iCol],
-           lp.col_lower_[iCol], sol[iCol], lp.col_upper_[iCol]);
-    if (lp.col_cost_[iCol] > 0) {
+    const double lower = lp.col_lower_[iCol];
+    const double cost = lp.col_cost_[iCol];
+    const double upper = lp.col_upper_[iCol];
+    const double value = sol[iCol];
+    printf("%4d %11.6g %11.6g %11.6g  %11.6g\n", iCol, cost, lower, value, upper);
+    std::pair<double, HighsInt> candidate_data = std::make_pair(std::fabs(cost), iCol);
+    if (cost > 0) {
       // Positive cost, so...
-      if (std::floor(sol[iCol] - 0.5) >= lp.col_lower_[iCol]) {
+      if (std::floor(value - 0.5) >= lower) {
         // Negative cost change since value can be reduced
-        down_negative_objective_change.push_back(iCol);
-      } else if (std::ceil(sol[iCol] + 0.5) <= lp.col_upper_[iCol]) {
-        // Non-negative cost change since value can be increased
-        up_non_negative_objective_change.push_back(iCol);
+        down_negative_objective_change.push_back(candidate_data);
       }
-    } else if (lp.col_cost_[iCol] < 0) {
+      if (std::ceil(value + 0.5) <= upper) {
+        // Non-negative cost change since value can be increased
+        up_non_negative_objective_change.push_back(candidate_data);
+      }
+    } else if (cost < 0) {
       // Negative cost, so...
-      if (std::floor(sol[iCol] - 0.5) >= lp.col_lower_[iCol]) {
+      if (std::floor(value - 0.5) >= lower) {
         // Non-negative cost change since value can be reduced
-        down_non_negative_objective_change.push_back(iCol);
-      } else if (std::ceil(sol[iCol] + 0.5) <= lp.col_upper_[iCol]) {
+        down_non_negative_objective_change.push_back(candidate_data);
+      }
+      if (std::ceil(value + 0.5) <= upper) {
         // Negative cost change since value can be increased
-        up_negative_objective_change.push_back(iCol);
+        up_negative_objective_change.push_back(candidate_data);
       }
     } else {
       // Zero cost, so...
-      if (std::floor(sol[iCol] - 0.5) >= lp.col_lower_[iCol]) {
+      if (std::floor(value - 0.5) >= lower) {
         // Non-negative cost change since value can be reduced
-        down_non_negative_objective_change.push_back(iCol);
-      } else if (std::ceil(sol[iCol] + 0.5) <= lp.col_upper_[iCol]) {
+        down_non_negative_objective_change.push_back(candidate_data);
+      }
+      if (std::ceil(value + 0.5) <= upper) {
         // Non-negative cost change since value can be increased
-        up_non_negative_objective_change.push_back(iCol);
+        up_non_negative_objective_change.push_back(candidate_data);
       }
     }
   }
+  std::sort(up_negative_objective_change.begin(), up_negative_objective_change.end(), greater);
+  std::sort(up_non_negative_objective_change.begin(), up_non_negative_objective_change.end(), greater);
+  std::sort(down_non_negative_objective_change.begin(), down_non_negative_objective_change.end(), greater);
+  std::sort(down_negative_objective_change.begin(), down_negative_objective_change.end(), greater);
   printf("\nup_negative_objective_change\n");
   for (HighsInt iX = 0; iX < HighsInt(up_negative_objective_change.size());
        iX++)
-    printf(" %d", up_negative_objective_change[iX]);
-  printf("\n");
+    printf(" %6d %11.4g\n",
+	   int(up_negative_objective_change[iX].second),
+	   up_negative_objective_change[iX].first);
   printf("\nup_non_negative_objective_change\n");
   for (HighsInt iX = 0; iX < HighsInt(up_non_negative_objective_change.size());
        iX++)
-    printf(" %d", up_non_negative_objective_change[iX]);
-  printf("\n");
+    printf(" %6d %11.4g\n",
+	   int(up_non_negative_objective_change[iX].second),
+	   up_non_negative_objective_change[iX].first);
   printf("\ndown_non_negative_objective_change\n");
   for (HighsInt iX = 0;
        iX < HighsInt(down_non_negative_objective_change.size()); iX++)
-    printf(" %d", down_non_negative_objective_change[iX]);
-  printf("\n");
+    printf(" %6d %11.4g\n",
+	   int(down_non_negative_objective_change[iX].second),
+	   down_non_negative_objective_change[iX].first);
   printf("\ndown_negative_objective_change\n");
   for (HighsInt iX = 0; iX < HighsInt(down_negative_objective_change.size());
        iX++)
-    printf(" %d", down_negative_objective_change[iX]);
-  printf("\n");
+    printf(" %6d %11.4g\n",
+	   int(down_negative_objective_change[iX].second),
+	   down_negative_objective_change[iX].first);
 
-  // For all the entries of upnegative_objective_change
+  const HighsInt num_up_negative_objective_change = up_negative_objective_change.size();
+  const HighsInt num_up_non_negative_objective_change = up_non_negative_objective_change.size();
+  const HighsInt num_down_non_negative_objective_change = down_non_negative_objective_change.size();
+  const HighsInt num_down_negative_objective_change = down_negative_objective_change.size();
+
+  const HighsInt num_up = num_up_negative_objective_change + num_up_non_negative_objective_change;
+  const HighsInt num_down = num_down_negative_objective_change + num_down_non_negative_objective_change;
+  HighsInt up_negative_k = 0;
+  HighsInt up_non_negative_k = -num_up_negative_objective_change;
+  // Need to scatter the nonzeros in the up column to spot when the up
+  // and down columns are in the same row
+  std::vector<double> up_col_value;
+  up_col_value.assign(lp.num_row_, 0);
+  // Need to remember which up column entries have been handled due to
+  // the up and down columns being in the same row
+  std::vector<bool> done_up_col_entry;
+  done_up_col_entry.assign(lp.num_row_, false);
+  const bool check_neutral = true;
+  for (HighsInt up_k = 0; up_k < num_up; up_k++, up_negative_k++, up_non_negative_k++) {
+    printf("%d %d %d\n", int(up_k), int(up_negative_k), int(up_non_negative_k));
+    HighsInt up_col = up_non_negative_k >= 0 ?
+      up_non_negative_objective_change[up_non_negative_k].second :
+      up_negative_objective_change[up_negative_k].second;
+    const double up_lower = lp.col_lower_[up_col];
+    const double up_cost = lp.col_cost_[up_col];
+    const double up_upper = lp.col_upper_[up_col];
+    const double up_value = sol[up_col];
+    for (HighsInt iEl = lp.a_matrix_.start_[up_col]; iEl < lp.a_matrix_.start_[up_col+1]; iEl++)
+      up_col_value[lp.a_matrix_.index_[iEl]] = lp.a_matrix_.value_[iEl];
+    
+    const HighsInt to_down_k = up_non_negative_k >= 0 ? num_down_negative_objective_change : num_down;
+    HighsInt down_negative_k = 0;
+    HighsInt down_non_negative_k = -num_down_negative_objective_change;
+    for (HighsInt down_k = 0; down_k < to_down_k; down_k++, down_negative_k++, down_non_negative_k++) {
+      HighsInt down_col = down_non_negative_k >= 0 ?
+	down_non_negative_objective_change[down_non_negative_k].second :
+	down_negative_objective_change[down_negative_k].second;      
+      if (up_col == down_col) continue;
+      const double down_lower = lp.col_lower_[down_col];
+      const double down_cost = lp.col_cost_[down_col];
+      const double down_upper = lp.col_upper_[down_col];
+      const double down_value = sol[down_col];
+      
+      double cost_sum = up_cost - down_cost;
+      if (cost_sum >= 0) continue;
+      printf("   up: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g]) down: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g]) cost sum = %g\n",
+	     int(up_k), int(up_col), up_cost, up_lower, up_value, up_upper,
+	     int(down_k), int(down_col), down_cost, down_lower, down_value, down_upper,
+	     cost_sum);
+      for (HighsInt iEl = lp.a_matrix_.start_[down_col]; iEl < lp.a_matrix_.start_[down_col+1]; iEl++) {
+      }
+      // Now handle the up column entries not in the down column
+      for (HighsInt iEl = lp.a_matrix_.start_[up_col]; iEl < lp.a_matrix_.start_[up_col+1]; iEl++) {
+	HighsInt up_row = lp.a_matrix_.index_[iEl];
+	if (done_up_col_entry[up_row]) {
+	  done_up_col_entry[up_row] = false;
+	} else {
+	  // Not in the down column
+	}
+      }
+      if (check_neutral) {
+	for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++)
+	  assert(!done_up_col_entry[iRow]);
+      }
+      
+      
+      
+    } // down_k
+    // Now zero up_col_value, ready for the next column
+    for (HighsInt iEl = lp.a_matrix_.start_[up_col]; iEl < lp.a_matrix_.start_[up_col+1]; iEl++)
+      up_col_value[lp.a_matrix_.index_[iEl]] = 0;
+    if (check_neutral) {
+      for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++)
+	assert(!up_col_value[iRow]);
+    }
+  } // up_k
 
   assert(111 == 444);
   return two_opt_finds_improvement;
