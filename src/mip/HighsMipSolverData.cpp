@@ -1672,10 +1672,14 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       delta_dn_dn = std::min(col1_value - col1_lower, delta_dn_dn);
 
       // Abandon if all searches are unattractive
-      if (cost_up_up >= 0 && delta_up_up < 1 - feastol) continue;
-      if (cost_up_dn >= 0 && delta_up_dn < 1 - feastol) continue;
-      if (cost_dn_up >= 0 && delta_dn_up < 1 - feastol) continue;
-      if (cost_dn_dn >= 0 && delta_dn_dn < 1 - feastol) continue;
+      const double min_attractive_delta = 1 - feastol;
+      if (delta_up_up < min_attractive_delta &&
+	  delta_up_dn < min_attractive_delta &&
+	  delta_dn_up < min_attractive_delta &&
+	  delta_dn_dn < min_attractive_delta) continue;
+      // Abandon if all costs are unattractive
+      if (cost_up_up >= 0 && cost_up_dn >= 0 &&
+	  cost_dn_up >= 0 && cost_dn_dn >= 0) continue;
      
       printf("\ncol0: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g]) col1: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g])\n",
 	     int(iX0), int(col0), col0_cost, col0_lower, col0_value, col0_upper,
@@ -1744,6 +1748,7 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
 	for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++)
 	  assert(!done_col0_entry[iRow]);
       }
+      // Now determine whether any change is valid
     } // iX1 loop
     // Now zero col0_matrix_value, ready for the next column
     for (HighsInt iEl = lp.a_matrix_.start_[col0]; iEl < lp.a_matrix_.start_[col0+1]; iEl++)
