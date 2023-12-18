@@ -1639,6 +1639,41 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       }
     }
   };
+  // c++_lambda for rounding delta
+  auto roundDelta = [&](const double col0_value, const double col1_value,
+			double& delta_value,
+			double& new_col0_integer, double& new_col1_integer) {
+    double new_col0_value = col0_value + delta_value;
+    if (std::abs(new_col0_value - std::floor(new_col0_value + 0.5)) <=
+	feastol) {
+      // new_col0_value is close to being integer
+      new_col0_integer = std::floor(new_col0_value + 0.5);
+    } else {
+      // new_col0_value is not close to close to being integer, so
+      // round down to the nearest integer, modifying delta_value
+      // accordingly
+      new_col0_value = std::floor(new_col0_value);
+      delta_value = new_col0_value - col0_value;
+    }
+    new_col0_integer = new_col0_value;
+    // Now for col1
+    double new_col1_value = col1_value + delta_value;
+    if (std::abs(new_col1_value - std::floor(new_col1_value + 0.5)) <=
+	feastol) {
+      // new_col1_value is close to being integer
+      new_col1_integer = std::floor(new_col1_value + 0.5);
+    } else {
+      // new_col1_value is not close to close to being integer, but
+      // rounding down to the nearest integer and modifying
+      // delta_value accordingly compromises new_col0_value
+      //
+      // Thow an assert and return -inf for new_col1_integer
+      assert(123==678);
+      new_col1_integer = -kHighsInf;
+    }
+  };
+  
+  const double min_attractive_delta = 1 - feastol;
   for (HighsInt iX0 = 0; iX0 < num_integer_col; iX0++) {
     const HighsInt col0 = ordered[iX0].second;
     const double col0_cost = lp.col_cost_[col0];
@@ -1672,7 +1707,6 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       delta_dn_dn = std::min(col1_value - col1_lower, delta_dn_dn);
 
       // Abandon if all searches are unattractive
-      const double min_attractive_delta = 1 - feastol;
       if (delta_up_up < min_attractive_delta &&
 	  delta_up_dn < min_attractive_delta &&
 	  delta_dn_up < min_attractive_delta &&
@@ -1749,6 +1783,62 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
 	  assert(!done_col0_entry[iRow]);
       }
       // Now determine whether any change is valid
+      if (delta_up_up < min_attractive_delta &&
+	  delta_up_dn < min_attractive_delta &&
+	  delta_dn_up < min_attractive_delta &&
+	  delta_dn_dn < min_attractive_delta) continue;
+      // Could pick up on MIP being unbounded!
+      if (delta_up_up >= kHighsInf ||
+	  delta_up_dn >= kHighsInf ||
+	  delta_dn_up >= kHighsInf ||
+ 	  delta_dn_dn >= kHighsInf) {
+        //	  highsLogUser(mipsolver.options_mip_->log_options,
+        // HighsLogType::kError,
+        printf("2-opt heuristic detects unboundedness: ignoring this column\n");
+        continue;
+      }
+      const double neg_col0_value = -col0_value;
+      const double neg_col1_value = -col1_value;
+      const double old_col0_integer = std::floor(col0_value + 0.5);
+      const double neg_old_col0_integer = std::floor(neg_col0_value + 0.5);
+      const double old_col1_integer = std::floor(col1_value + 0.5);
+      const double neg_old_col1_integer = std::floor(neg_col1_value + 0.5);
+      double new_col0_up_up_integer = kHighsInf;
+      double new_col1_up_up_integer = kHighsInf;
+      double new_col0_up_dn_integer = kHighsInf;
+      double new_col1_up_dn_integer = kHighsInf;
+      double new_col0_dn_up_integer = kHighsInf;
+      double new_col1_dn_up_integer = kHighsInf;
+      double new_col0_dn_dn_integer = kHighsInf;
+      double new_col1_dn_dn_integer = kHighsInf;
+      // For delta_up_up
+      roundDelta(col0_value, col1_value, delta_up_up, new_col0_up_up_integer, new_col1_up_up_integer);
+      // For delta_up_dn
+      roundDelta(col0_value, neg_col1_value, delta_up_dn, new_col0_up_dn_integer, new_col1_up_dn_integer);
+      new_col1_up_dn_integer = -new_col1_up_dn_integer;
+      // For delta_dn_up
+      roundDelta(neg_col0_value, col1_value, delta_dn_up, new_col0_dn_up_integer, new_col1_dn_up_integer);
+      new_col0_up_dn_integer = -new_col0_up_dn_integer;
+      // For delta_dn_dn
+      roundDelta(neg_col0_value, neg_col1_value, delta_dn_dn, new_col0_dn_dn_integer, new_col1_dn_dn_integer);
+      new_col0_up_dn_integer = -new_col0_up_dn_integer;
+      new_col1_up_dn_integer = -new_col1_up_dn_integer;
+      printf("\nAfter line searches\nChange DeltaSol DeltaObj Col0Integer Col1Integer\n");
+      printf("UpUp %11.4g %11.4g %11.4g %11.4g\n",
+	     delta_up_up, delta_up_up * cost_up_up, new_col0_up_up_integer, new_col1_up_up_integer);
+      printf("DnUp %11.4g %11.4g %11.4g %11.4g\n",
+	     delta_dn_up, delta_dn_up * cost_dn_up, new_col0_dn_up_integer, new_col1_dn_up_integer);
+      printf("UpDn %11.4g %11.4g %11.4g %11.4g\n",
+	     delta_up_dn, delta_up_dn * cost_up_dn, new_col0_up_dn_integer, new_col1_up_dn_integer);
+      printf("DnDn %11.4g %11.4g %11.4g %11.4g\n",
+	     delta_dn_dn, delta_dn_dn * cost_dn_dn, new_col0_dn_dn_integer, new_col1_dn_dn_integer);
+      if (new_col1_up_up_integer <= -kHighsInf ||
+	  new_col1_up_dn_integer <= -kHighsInf ||
+	  new_col1_dn_up_integer <= -kHighsInf ||
+	  new_col1_dn_dn_integer <= -kHighsInf) {
+	printf("Delta rounding failure\n");
+	continue;
+      }
     } // iX1 loop
     // Now zero col0_matrix_value, ready for the next column
     for (HighsInt iEl = lp.a_matrix_.start_[col0]; iEl < lp.a_matrix_.start_[col0+1]; iEl++)
