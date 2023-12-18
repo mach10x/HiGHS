@@ -1596,6 +1596,49 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
   std::vector<bool> done_col0_entry;
   done_col0_entry.assign(lp.num_row_, false);
   const bool check_neutral = true;
+
+
+  // c++_lambda for line search term
+  auto linsearchTerm = [&](const double row_lower, const double activity, const double row_upper,
+			   const double matrix_value, double& delta_value) {
+    if (!matrix_value) return;
+    double row_delta = delta_value * matrix_value;
+    // If the upper (lower) bound on the row is exceeded by the
+    // change, then scale delta down
+    if (row_delta > 0) {
+      // Row activity increasing, so see whether upper bound is exceeded
+      const double lhs = activity + row_delta;
+      const double rhs = row_upper;
+      if (activity + row_delta > row_upper) {
+	delta_value = (row_upper - activity) / matrix_value;
+	double new_activity = activity + matrix_value * delta_value;
+	double residual = new_activity - row_upper;
+	const bool residual_ok = residual <= feastol;
+	if (!residual_ok) {
+	  printf(
+		 "Updated delta_value yields residual = %g > %g = feastol\n",
+		 residual, feastol);
+	}
+	assert(residual_ok);
+      }
+    } else {
+      // Row activity decreasing, so see whether lower bound is exceeded
+      const double lhs = activity + row_delta;
+      const double rhs = row_lower;
+      if (activity + row_delta < row_lower) {
+	delta_value = (row_lower - activity) / matrix_value;
+	double new_activity = activity + matrix_value * delta_value;
+	double residual = row_lower - new_activity;
+	const bool residual_ok = residual <= feastol;
+	if (!residual_ok) {
+	  printf(
+		 "Updated delta_value yields residual = %g > %g = feastol\n",
+		 residual, feastol);
+	}
+	assert(residual_ok);
+      }
+    }
+  };
   for (HighsInt iX0 = 0; iX0 < num_integer_col; iX0++) {
     const HighsInt col0 = ordered[iX0].second;
     const double col0_cost = lp.col_cost_[col0];
@@ -1649,66 +1692,52 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       }
 	
       for (HighsInt iEl = lp.a_matrix_.start_[col1]; iEl < lp.a_matrix_.start_[col1+1]; iEl++) {
-        HighsInt iRow = lp.a_matrix_.index_[iEl];
-        double col1_matrix_value = lp.a_matrix_.value_[iEl];
+        const HighsInt iRow = lp.a_matrix_.index_[iEl];
+        const double col1_matrix_value = lp.a_matrix_.value_[iEl];
         const double row_lower = lp.row_lower_[iRow];
-        const double row_upper = lp.row_upper_[iRow];
         const double activity = row_value[iRow];
+        const double row_upper = lp.row_upper_[iRow];
 	// Both columns change by delta, so change in row activity is
 	// given by the sum of appropriately signed matrix entries,
 	// conveniently referred to as matrix_value. Note that this
 	// may be zero if the coefficients cancel
-	double delta_value = delta_up_up;
-	double matrix_value = col0_matrix_value[iRow] + col1_matrix_value;
-	// Now generic - to go into lambda
-	if (matrix_value) {
-        double row_delta = delta_value * matrix_value;
-	// If the upper (lower) bound on the row is exceeded by the
-	// change, then scale delta down
-	if (row_delta > 0) {
-          // Row activity increasing, so see whether upper bound is exceeded
-          const double lhs = activity + row_delta;
-          const double rhs = row_upper;
-          if (activity + row_delta > row_upper) {
-            delta_value = (row_upper - activity) / matrix_value;
-            double new_activity = activity + matrix_value * delta_value;
-            double residual = new_activity - row_upper;
-            const bool residual_ok = residual <= feastol;
-            if (!residual_ok) {
-              printf(
-                  "Updated delta_value yields residual = %g > %g = feastol\n",
-                  residual, feastol);
-            }
-            assert(residual_ok);
-          }
-	} else {
-          // Row activity decreasing, so see whether lower bound is exceeded
-          const double lhs = activity + row_delta;
-          const double rhs = row_lower;
-          if (activity + row_delta < row_lower) {
-            delta_value = (row_lower - activity) / matrix_value;
-            double new_activity = activity + matrix_value * delta_value;
-            double residual = row_lower - new_activity;
-            const bool residual_ok = residual <= feastol;
-            if (!residual_ok) {
-              printf(
-                  "Updated delta_value yields residual = %g > %g = feastol\n",
-                  residual, feastol);
-            }
-            assert(residual_ok);
-          }
-	}
-	assert(delta_up_up == delta_value);
-	delta_up_up = delta_value;
-	}
+	//
+	// When both are increasing
+	linsearchTerm(row_lower, activity, row_upper,
+		      col0_matrix_value[iRow] + col1_matrix_value,
+		      delta_up_up);
+	// When col0 is increasing and col1 is decreasing
+	linsearchTerm(row_lower, activity, row_upper,
+		      col0_matrix_value[iRow] - col1_matrix_value,
+		      delta_up_dn);
+	// When col0 is decreasing and col1 is increasing
+	linsearchTerm(row_lower, activity, row_upper,
+		      -col0_matrix_value[iRow] + col1_matrix_value,
+		      delta_dn_up);
+	// When col0 is decreasing and col1 is decreasing
+	linsearchTerm(row_lower, activity, row_upper,
+		      -col0_matrix_value[iRow] - col1_matrix_value,
+		      delta_dn_dn);
+	
       }
       // Now handle the column 0 entries not in column 1
       for (HighsInt iEl = lp.a_matrix_.start_[col0]; iEl < lp.a_matrix_.start_[col0+1]; iEl++) {
-	HighsInt col0_row = lp.a_matrix_.index_[iEl];
-	if (done_col0_entry[col0_row]) {
-	  done_col0_entry[col0_row] = false;
+        const HighsInt iRow = lp.a_matrix_.index_[iEl];
+	if (done_col0_entry[iRow]) {
+	  done_col0_entry[iRow] = false;
 	} else {
-	  // Not in column 1
+	  const double row_lower = lp.row_lower_[iRow];
+	  const double activity = row_value[iRow];
+	  const double row_upper = lp.row_upper_[iRow];
+	  const double matrix_value = lp.a_matrix_.value_[iEl];
+	  linsearchTerm(row_lower, activity, row_upper,
+			matrix_value, delta_up_up);
+	  linsearchTerm(row_lower, activity, row_upper,
+			matrix_value, delta_up_dn);
+	  linsearchTerm(row_lower, activity, row_upper,
+			-matrix_value, delta_dn_up);
+	  linsearchTerm(row_lower, activity, row_upper,
+			-matrix_value, delta_dn_dn);
 	}
       }
       if (check_neutral) {

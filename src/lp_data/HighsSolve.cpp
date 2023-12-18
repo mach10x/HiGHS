@@ -320,6 +320,7 @@ HighsStatus solveUnconstrainedLp(const HighsOptions& options, const HighsLp& lp,
 
 void assessExcessiveBoundCost(const HighsLogOptions log_options,
                               const HighsModel& model) {
+  // c++_lambda for assessing finite nonzero
   auto assessFiniteNonzero = [&](const double value, double& min_value,
                                  double& max_value) {
     double abs_value = std::abs(value);
