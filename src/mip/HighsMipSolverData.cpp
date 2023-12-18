@@ -1549,159 +1549,181 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
   lp.a_matrix_.product(row_value, sol);
   // Consider 2-opt heuristic on solution
   //
-  // Prepare sets of columns that are integer with
-  // negative/non-negative objective change if the value is pushed
-  // up or down
-  std::vector<std::pair<double, HighsInt>> up_negative_objective_change;
-  std::vector<std::pair<double, HighsInt>> up_non_negative_objective_change;
-  std::vector<std::pair<double, HighsInt>> down_non_negative_objective_change;
-  std::vector<std::pair<double, HighsInt>> down_negative_objective_change;
+  // Prepare a set of integer columns that will be sorted by
+  // increasing cost, so the ones best to move up come first, and
+  // those best to move down come last
+  std::vector<std::pair<double, HighsInt>> ordered;
   printf("  Ix        Cost       Lower       Value        Upper\n");
   for (HighsInt integerCol = 0; integerCol < num_integer_col; integerCol++) {
     HighsInt iCol = integer_cols[integerCol];
+    double cost = lp.col_cost_[iCol];
     const double lower = lp.col_lower_[iCol];
-    const double cost = lp.col_cost_[iCol];
-    const double upper = lp.col_upper_[iCol];
     const double value = sol[iCol];
+    const double upper = lp.col_upper_[iCol];
     printf("%4d %11.6g %11.6g %11.6g  %11.6g\n", iCol, cost, lower, value, upper);
     std::pair<double, HighsInt> candidate_data = std::make_pair(std::fabs(cost), iCol);
     if (cost > 0) {
-      // Positive cost, so...
+      // Positive cost...
       if (std::floor(value - 0.5) >= lower) {
-        // Negative cost change since value can be reduced
-        down_negative_objective_change.push_back(candidate_data);
-      }
-      if (std::ceil(value + 0.5) <= upper) {
-        // Non-negative cost change since value can be increased
-        up_non_negative_objective_change.push_back(candidate_data);
+        // ... and value can be decreased: attractive, so store -cost
+	cost = -cost;
+      } else {
+        // ... and value cannot be decreased: unattractive, so store 0
+	cost = 0;
       }
     } else if (cost < 0) {
-      // Negative cost, so...
-      if (std::floor(value - 0.5) >= lower) {
-        // Non-negative cost change since value can be reduced
-        down_non_negative_objective_change.push_back(candidate_data);
-      }
+      // Negative cost...
       if (std::ceil(value + 0.5) <= upper) {
-        // Negative cost change since value can be increased
-        up_negative_objective_change.push_back(candidate_data);
-      }
-    } else {
-      // Zero cost, so...
-      if (std::floor(value - 0.5) >= lower) {
-        // Non-negative cost change since value can be reduced
-        down_non_negative_objective_change.push_back(candidate_data);
-      }
-      if (std::ceil(value + 0.5) <= upper) {
-        // Non-negative cost change since value can be increased
-        up_non_negative_objective_change.push_back(candidate_data);
+        // ... and value can be increased: attractive, so store cost
+      } else {
+        // ... and value cannot be increased: unattractive, so store 0
+	cost = 0;
       }
     }
+    ordered.push_back(std::make_pair(cost, iCol));
   }
-  std::sort(up_negative_objective_change.begin(), up_negative_objective_change.end(), greater);
-  std::sort(up_non_negative_objective_change.begin(), up_non_negative_objective_change.end(), greater);
-  std::sort(down_non_negative_objective_change.begin(), down_non_negative_objective_change.end(), greater);
-  std::sort(down_negative_objective_change.begin(), down_negative_objective_change.end(), greater);
-  printf("\nup_negative_objective_change\n");
-  for (HighsInt iX = 0; iX < HighsInt(up_negative_objective_change.size());
-       iX++)
-    printf(" %6d %11.4g\n",
-	   int(up_negative_objective_change[iX].second),
-	   up_negative_objective_change[iX].first);
-  printf("\nup_non_negative_objective_change\n");
-  for (HighsInt iX = 0; iX < HighsInt(up_non_negative_objective_change.size());
-       iX++)
-    printf(" %6d %11.4g\n",
-	   int(up_non_negative_objective_change[iX].second),
-	   up_non_negative_objective_change[iX].first);
-  printf("\ndown_non_negative_objective_change\n");
-  for (HighsInt iX = 0;
-       iX < HighsInt(down_non_negative_objective_change.size()); iX++)
-    printf(" %6d %11.4g\n",
-	   int(down_non_negative_objective_change[iX].second),
-	   down_non_negative_objective_change[iX].first);
-  printf("\ndown_negative_objective_change\n");
-  for (HighsInt iX = 0; iX < HighsInt(down_negative_objective_change.size());
-       iX++)
-    printf(" %6d %11.4g\n",
-	   int(down_negative_objective_change[iX].second),
-	   down_negative_objective_change[iX].first);
+  std::sort(ordered.begin(), ordered.end(), greater);
+  printf("\nordered\n");
+  for (HighsInt iX = 0; iX < num_integer_col; iX++)
+    printf(" %6d %11.4g\n", int(ordered[iX].second), ordered[iX].first);
 
-  const HighsInt num_up_negative_objective_change = up_negative_objective_change.size();
-  const HighsInt num_up_non_negative_objective_change = up_non_negative_objective_change.size();
-  const HighsInt num_down_non_negative_objective_change = down_non_negative_objective_change.size();
-  const HighsInt num_down_negative_objective_change = down_negative_objective_change.size();
-
-  const HighsInt num_up = num_up_negative_objective_change + num_up_non_negative_objective_change;
-  const HighsInt num_down = num_down_negative_objective_change + num_down_non_negative_objective_change;
-  HighsInt up_negative_k = 0;
-  HighsInt up_non_negative_k = -num_up_negative_objective_change;
   // Need to scatter the nonzeros in the up column to spot when the up
   // and down columns are in the same row
-  std::vector<double> up_col_value;
-  up_col_value.assign(lp.num_row_, 0);
+  std::vector<double> col0_matrix_value;
+  col0_matrix_value.assign(lp.num_row_, 0);
   // Need to remember which up column entries have been handled due to
   // the up and down columns being in the same row
-  std::vector<bool> done_up_col_entry;
-  done_up_col_entry.assign(lp.num_row_, false);
+  std::vector<bool> done_col0_entry;
+  done_col0_entry.assign(lp.num_row_, false);
   const bool check_neutral = true;
-  for (HighsInt up_k = 0; up_k < num_up; up_k++, up_negative_k++, up_non_negative_k++) {
-    printf("%d %d %d\n", int(up_k), int(up_negative_k), int(up_non_negative_k));
-    HighsInt up_col = up_non_negative_k >= 0 ?
-      up_non_negative_objective_change[up_non_negative_k].second :
-      up_negative_objective_change[up_negative_k].second;
-    const double up_lower = lp.col_lower_[up_col];
-    const double up_cost = lp.col_cost_[up_col];
-    const double up_upper = lp.col_upper_[up_col];
-    const double up_value = sol[up_col];
-    for (HighsInt iEl = lp.a_matrix_.start_[up_col]; iEl < lp.a_matrix_.start_[up_col+1]; iEl++)
-      up_col_value[lp.a_matrix_.index_[iEl]] = lp.a_matrix_.value_[iEl];
-    
-    const HighsInt to_down_k = up_non_negative_k >= 0 ? num_down_negative_objective_change : num_down;
-    HighsInt down_negative_k = 0;
-    HighsInt down_non_negative_k = -num_down_negative_objective_change;
-    for (HighsInt down_k = 0; down_k < to_down_k; down_k++, down_negative_k++, down_non_negative_k++) {
-      HighsInt down_col = down_non_negative_k >= 0 ?
-	down_non_negative_objective_change[down_non_negative_k].second :
-	down_negative_objective_change[down_negative_k].second;      
-      if (up_col == down_col) continue;
-      const double down_lower = lp.col_lower_[down_col];
-      const double down_cost = lp.col_cost_[down_col];
-      const double down_upper = lp.col_upper_[down_col];
-      const double down_value = sol[down_col];
+  for (HighsInt iX0 = 0; iX0 < num_integer_col; iX0++) {
+    const HighsInt col0 = ordered[iX0].second;
+    const double col0_cost = lp.col_cost_[col0];
+    const double col0_lower = lp.col_lower_[col0];
+    const double col0_upper = lp.col_upper_[col0];
+    for (HighsInt iEl = lp.a_matrix_.start_[col0]; iEl < lp.a_matrix_.start_[col0+1]; iEl++)
+      col0_matrix_value[lp.a_matrix_.index_[iEl]] = lp.a_matrix_.value_[iEl];
+    for (HighsInt iX1 = num_integer_col-1; iX1 >= 0; iX1--) {
+      const HighsInt col1 = ordered[iX1].second;
+      if (col1 == col0) continue;
+      const double col0_value = sol[col0];
+      const double col1_cost = lp.col_cost_[col1];
+      const double col1_lower = lp.col_lower_[col1];
+      const double col1_value = sol[col1];
+      const double col1_upper = lp.col_upper_[col1];
+      // Now perform the line searches
+
+      double cost_up_up = -col0_cost-col1_cost;
+      double cost_up_dn = -col0_cost+col1_cost;
+      double cost_dn_up = +col0_cost-col1_cost;
+      double cost_dn_dn = +col0_cost+col1_cost;
       
-      double cost_sum = up_cost - down_cost;
-      if (cost_sum >= 0) continue;
-      printf("   up: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g]) down: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g]) cost sum = %g\n",
-	     int(up_k), int(up_col), up_cost, up_lower, up_value, up_upper,
-	     int(down_k), int(down_col), down_cost, down_lower, down_value, down_upper,
-	     cost_sum);
-      for (HighsInt iEl = lp.a_matrix_.start_[down_col]; iEl < lp.a_matrix_.start_[down_col+1]; iEl++) {
+      double delta_up_up = col0_upper - col0_value;
+      double delta_up_dn = delta_up_up;
+      double delta_dn_up = col0_value - col0_lower;
+      double delta_dn_dn = delta_dn_up;
+      
+      delta_up_up = std::min(col1_upper - col1_value, delta_up_up);
+      delta_up_dn = std::min(col1_value - col1_lower, delta_up_dn);
+      delta_dn_up = std::min(col1_upper - col1_value, delta_dn_up);
+      delta_dn_dn = std::min(col1_value - col1_lower, delta_dn_dn);
+
+      // Abandon if all searches are unattractive
+      if (cost_up_up >= 0 && delta_up_up < 1 - feastol) continue;
+      if (cost_up_dn >= 0 && delta_up_dn < 1 - feastol) continue;
+      if (cost_dn_up >= 0 && delta_dn_up < 1 - feastol) continue;
+      if (cost_dn_dn >= 0 && delta_dn_dn < 1 - feastol) continue;
+     
+      printf("\ncol0: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g]) col1: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g])\n",
+	     int(iX0), int(col0), col0_cost, col0_lower, col0_value, col0_upper,
+	     int(iX1), int(col1), col1_cost, col1_lower, col1_value, col1_upper);
+      printf("up_up (%9.2g, %9.2g); up_dn (%9.2g, %9.2g); dn_up (%9.2g, %9.2g); dn_dn (%9.2g, %9.2g)\n",
+	     delta_up_up, cost_up_up,
+	     delta_up_dn, cost_up_dn,
+	     delta_dn_up, cost_dn_up,
+	     delta_dn_dn, cost_dn_dn);
+      HighsInt check_col0 = 2;
+      HighsInt check_col1 = 1;
+      if (col0 == check_col0 && col1 == check_col1) {
+	printf("col0 == %d && col1 == %d\n", int(check_col0), int(check_col1));
       }
-      // Now handle the up column entries not in the down column
-      for (HighsInt iEl = lp.a_matrix_.start_[up_col]; iEl < lp.a_matrix_.start_[up_col+1]; iEl++) {
-	HighsInt up_row = lp.a_matrix_.index_[iEl];
-	if (done_up_col_entry[up_row]) {
-	  done_up_col_entry[up_row] = false;
+	
+      for (HighsInt iEl = lp.a_matrix_.start_[col1]; iEl < lp.a_matrix_.start_[col1+1]; iEl++) {
+        HighsInt iRow = lp.a_matrix_.index_[iEl];
+        double col1_matrix_value = lp.a_matrix_.value_[iEl];
+        const double row_lower = lp.row_lower_[iRow];
+        const double row_upper = lp.row_upper_[iRow];
+        const double activity = row_value[iRow];
+	// Both columns change by delta, so change in row activity is
+	// given by the sum of appropriately signed matrix entries,
+	// conveniently referred to as matrix_value. Note that this
+	// may be zero if the coefficients cancel
+	double delta_value = delta_up_up;
+	double matrix_value = col0_matrix_value[iRow] + col1_matrix_value;
+	// Now generic - to go into lambda
+	if (matrix_value) {
+        double row_delta = delta_value * matrix_value;
+	// If the upper (lower) bound on the row is exceeded by the
+	// change, then scale delta down
+	if (row_delta > 0) {
+          // Row activity increasing, so see whether upper bound is exceeded
+          const double lhs = activity + row_delta;
+          const double rhs = row_upper;
+          if (activity + row_delta > row_upper) {
+            delta_value = (row_upper - activity) / matrix_value;
+            double new_activity = activity + matrix_value * delta_value;
+            double residual = new_activity - row_upper;
+            const bool residual_ok = residual <= feastol;
+            if (!residual_ok) {
+              printf(
+                  "Updated delta_value yields residual = %g > %g = feastol\n",
+                  residual, feastol);
+            }
+            assert(residual_ok);
+          }
 	} else {
-	  // Not in the down column
+          // Row activity decreasing, so see whether lower bound is exceeded
+          const double lhs = activity + row_delta;
+          const double rhs = row_lower;
+          if (activity + row_delta < row_lower) {
+            delta_value = (row_lower - activity) / matrix_value;
+            double new_activity = activity + matrix_value * delta_value;
+            double residual = row_lower - new_activity;
+            const bool residual_ok = residual <= feastol;
+            if (!residual_ok) {
+              printf(
+                  "Updated delta_value yields residual = %g > %g = feastol\n",
+                  residual, feastol);
+            }
+            assert(residual_ok);
+          }
+	}
+	assert(delta_up_up == delta_value);
+	delta_up_up = delta_value;
+	}
+      }
+      // Now handle the column 0 entries not in column 1
+      for (HighsInt iEl = lp.a_matrix_.start_[col0]; iEl < lp.a_matrix_.start_[col0+1]; iEl++) {
+	HighsInt col0_row = lp.a_matrix_.index_[iEl];
+	if (done_col0_entry[col0_row]) {
+	  done_col0_entry[col0_row] = false;
+	} else {
+	  // Not in column 1
 	}
       }
       if (check_neutral) {
 	for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++)
-	  assert(!done_up_col_entry[iRow]);
+	  assert(!done_col0_entry[iRow]);
       }
-      
-      
-      
-    } // down_k
-    // Now zero up_col_value, ready for the next column
-    for (HighsInt iEl = lp.a_matrix_.start_[up_col]; iEl < lp.a_matrix_.start_[up_col+1]; iEl++)
-      up_col_value[lp.a_matrix_.index_[iEl]] = 0;
+    } // iX1 loop
+    // Now zero col0_matrix_value, ready for the next column
+    for (HighsInt iEl = lp.a_matrix_.start_[col0]; iEl < lp.a_matrix_.start_[col0+1]; iEl++)
+      col0_matrix_value[lp.a_matrix_.index_[iEl]] = 0;
     if (check_neutral) {
       for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++)
-	assert(!up_col_value[iRow]);
+	assert(!col0_matrix_value[iRow]);
     }
-  } // up_k
+  } // iX0 loop
 
   assert(111 == 444);
   return two_opt_finds_improvement;
