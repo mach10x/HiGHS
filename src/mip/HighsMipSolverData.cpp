@@ -1585,7 +1585,7 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
   std::sort(ordered.begin(), ordered.end(), greater);
   printf("\nordered\n");
   for (HighsInt iX = 0; iX < num_integer_col; iX++)
-    printf(" %6d %11.4g\n", int(ordered[iX].second), ordered[iX].first);
+    printf(" %6d %11.6g\n", int(ordered[iX].second), ordered[iX].first);
 
   // Need to scatter the nonzeros in the up column to spot when the up
   // and down columns are in the same row
@@ -1691,10 +1691,10 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       const double col1_upper = lp.col_upper_[col1];
       // Now perform the line searches
 
-      double cost_up_up = -col0_cost-col1_cost;
-      double cost_up_dn = -col0_cost+col1_cost;
-      double cost_dn_up = +col0_cost-col1_cost;
-      double cost_dn_dn = +col0_cost+col1_cost;
+      double cost_up_up = +col0_cost+col1_cost;
+      double cost_up_dn = +col0_cost-col1_cost;
+      double cost_dn_up = -col0_cost+col1_cost;
+      double cost_dn_dn = -col0_cost-col1_cost;
       
       double delta_up_up = col0_upper - col0_value;
       double delta_up_dn = delta_up_up;
@@ -1715,10 +1715,10 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       if (cost_up_up >= 0 && cost_up_dn >= 0 &&
 	  cost_dn_up >= 0 && cost_dn_dn >= 0) continue;
      
-      printf("\ncol0: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g]) col1: %2d (%4d %9.2g [%9.2g, %9.2g, %9.2g])\n",
+      printf("\ncol0: %2d (%4d %11.6g [%11.6g, %11.6g, %11.6g]) col1: %2d (%4d %11.6g [%11.6g, %11.6g, %11.6g])\n",
 	     int(iX0), int(col0), col0_cost, col0_lower, col0_value, col0_upper,
 	     int(iX1), int(col1), col1_cost, col1_lower, col1_value, col1_upper);
-      printf("up_up (%9.2g, %9.2g); up_dn (%9.2g, %9.2g); dn_up (%9.2g, %9.2g); dn_dn (%9.2g, %9.2g)\n",
+      printf("up_up (%11.6g, %11.6g); up_dn (%11.6g, %11.6g); dn_up (%11.6g, %11.6g); dn_dn (%11.6g, %11.6g)\n",
 	     delta_up_up, cost_up_up,
 	     delta_up_dn, cost_up_dn,
 	     delta_dn_up, cost_dn_up,
@@ -1735,6 +1735,8 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
         const double row_lower = lp.row_lower_[iRow];
         const double activity = row_value[iRow];
         const double row_upper = lp.row_upper_[iRow];
+	printf("iEl = %4d: row %4d (%11.6g %11.6g %11.6g) Matrix (%11.6g, %11.6g)\n",
+	       int(iEl), int(iRow), row_lower, activity, row_upper, col0_matrix_value[iRow], col1_matrix_value);
 	// Both columns change by delta, so change in row activity is
 	// given by the sum of appropriately signed matrix entries,
 	// conveniently referred to as matrix_value. Note that this
@@ -1768,6 +1770,8 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
 	  const double activity = row_value[iRow];
 	  const double row_upper = lp.row_upper_[iRow];
 	  const double matrix_value = lp.a_matrix_.value_[iEl];
+	printf("iEl = %4d: row %4d (%11.6g %11.6g %11.6g) Matrix (%11.6g, %11.6g)\n",
+	       int(iEl), int(iRow), row_lower, activity, row_upper, matrix_value, 0.0);
 	  linsearchTerm(row_lower, activity, row_upper,
 			matrix_value, delta_up_up);
 	  linsearchTerm(row_lower, activity, row_upper,
@@ -1800,9 +1804,7 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       const double neg_col0_value = -col0_value;
       const double neg_col1_value = -col1_value;
       const double old_col0_integer = std::floor(col0_value + 0.5);
-      const double neg_old_col0_integer = std::floor(neg_col0_value + 0.5);
       const double old_col1_integer = std::floor(col1_value + 0.5);
-      const double neg_old_col1_integer = std::floor(neg_col1_value + 0.5);
       double new_col0_up_up_integer = kHighsInf;
       double new_col1_up_up_integer = kHighsInf;
       double new_col0_up_dn_integer = kHighsInf;
@@ -1818,20 +1820,25 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
       new_col1_up_dn_integer = -new_col1_up_dn_integer;
       // For delta_dn_up
       roundDelta(neg_col0_value, col1_value, delta_dn_up, new_col0_dn_up_integer, new_col1_dn_up_integer);
-      new_col0_up_dn_integer = -new_col0_up_dn_integer;
+      new_col0_dn_up_integer = -new_col0_dn_up_integer;
       // For delta_dn_dn
       roundDelta(neg_col0_value, neg_col1_value, delta_dn_dn, new_col0_dn_dn_integer, new_col1_dn_dn_integer);
-      new_col0_up_dn_integer = -new_col0_up_dn_integer;
-      new_col1_up_dn_integer = -new_col1_up_dn_integer;
-      printf("\nAfter line searches\nChange DeltaSol DeltaObj Col0Integer Col1Integer\n");
-      printf("UpUp %11.4g %11.4g %11.4g %11.4g\n",
-	     delta_up_up, delta_up_up * cost_up_up, new_col0_up_up_integer, new_col1_up_up_integer);
-      printf("DnUp %11.4g %11.4g %11.4g %11.4g\n",
-	     delta_dn_up, delta_dn_up * cost_dn_up, new_col0_dn_up_integer, new_col1_dn_up_integer);
-      printf("UpDn %11.4g %11.4g %11.4g %11.4g\n",
-	     delta_up_dn, delta_up_dn * cost_up_dn, new_col0_up_dn_integer, new_col1_up_dn_integer);
-      printf("DnDn %11.4g %11.4g %11.4g %11.4g\n",
-	     delta_dn_dn, delta_dn_dn * cost_dn_dn, new_col0_dn_dn_integer, new_col1_dn_dn_integer);
+      new_col0_dn_dn_integer = -new_col0_dn_dn_integer;
+      new_col0_dn_dn_integer = -new_col0_dn_dn_integer;
+      double delta_objective_up_up = delta_up_up * cost_up_up;
+      double delta_objective_up_dn = delta_up_dn * cost_up_dn;
+      double delta_objective_dn_up = delta_dn_up * cost_dn_up;
+      double delta_objective_dn_dn = delta_dn_dn * cost_dn_dn;
+      printf("\nAfter line searches\n"
+	     "Change  DeltaSol    DeltaObj Col0Integer Col1Integer\n");
+      printf("UpUp %11.6g %11.6g %11.6g %11.6g\n",
+	     delta_up_up, delta_objective_up_up, new_col0_up_up_integer, new_col1_up_up_integer);
+      printf("UpDn %11.6g %11.6g %11.6g %11.6g\n",
+	     delta_up_dn, delta_objective_up_dn, new_col0_up_dn_integer, new_col1_up_dn_integer);
+      printf("DnUp %11.6g %11.6g %11.6g %11.6g\n",
+	     delta_dn_up, delta_objective_dn_up, new_col0_dn_up_integer, new_col1_dn_up_integer);
+      printf("DnDn %11.6g %11.6g %11.6g %11.6g\n",
+	     delta_dn_dn, delta_objective_dn_dn, new_col0_dn_dn_integer, new_col1_dn_dn_integer);
       if (new_col1_up_up_integer <= -kHighsInf ||
 	  new_col1_up_dn_integer <= -kHighsInf ||
 	  new_col1_dn_up_integer <= -kHighsInf ||
@@ -1839,6 +1846,61 @@ bool HighsMipSolverData::twoOptImprovement(std::vector<double>& sol,
 	printf("Delta rounding failure\n");
 	continue;
       }
+      HighsInt col0_delta_sign = 1;
+      HighsInt col1_delta_sign = 1;
+      double best_delta = 0;
+      double best_delta_objective = kHighsInf;
+      if (delta_up_up > min_attractive_delta) {
+	// UpUp is candidate
+	if (best_delta_objective > delta_objective_up_up) {
+	  best_delta = delta_up_up;
+	  best_delta_objective = delta_objective_up_up;
+	  col0_delta_sign = 1;
+	  col1_delta_sign = 1;
+	}
+      }
+      if (delta_up_dn > min_attractive_delta) {
+	// UpDn is candidate
+	if (best_delta_objective > delta_objective_up_dn) {
+	  best_delta = delta_up_dn;
+	  best_delta_objective = delta_objective_up_dn;
+	  col0_delta_sign = 1;
+	  col1_delta_sign = -1;
+	}
+      }
+      if (delta_dn_up > min_attractive_delta) {
+	// DnUp is candidate
+	if (best_delta_objective > delta_objective_dn_up) {
+	  best_delta = delta_dn_up;
+	  best_delta_objective = delta_objective_dn_up;
+	  col0_delta_sign = -1;
+	  col1_delta_sign = 1;
+	}
+      }
+      if (delta_dn_dn > min_attractive_delta) {
+	// DnDn is candidate
+	if (best_delta_objective > delta_objective_dn_dn) {
+	  best_delta = delta_dn_dn;
+	  best_delta_objective = delta_objective_dn_dn;
+	  col0_delta_sign = -1;
+	  col1_delta_sign = -1;
+	}
+      }
+      if (best_delta_objective >= 0) continue;
+       const bool report_success = true; //false;  // 
+      if (report_success) {
+        printf(
+            "2-opt: submip=%d; change %9.2g in cols %4d %4s [%9.2g, %9.2g, %9.2g] and %4d %4s [%9.2g, %9.2g, %9.2g]: "
+            "objective change %11.6g\n",
+            mipsolver.submip, best_delta, 
+            int(col0), col0_delta_sign>0 ? "up  " : "down", col0_lower, col0_value, col0_upper,
+	    int(col1), col1_delta_sign>0 ? "up  " : "down", col1_lower, col1_value, col1_upper,
+            best_delta_objective);
+        fflush(stdout);
+      }
+      // ToDo Assess new_col0_up_up_integer, new_col1_up_up_integeretc
+      //
+      // Apply best delta and call addIncumbent
     } // iX1 loop
     // Now zero col0_matrix_value, ready for the next column
     for (HighsInt iEl = lp.a_matrix_.start_[col0]; iEl < lp.a_matrix_.start_[col0+1]; iEl++)
