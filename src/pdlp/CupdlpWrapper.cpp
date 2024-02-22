@@ -548,10 +548,14 @@ void getUserParamsFromOptions(const HighsOptions& options,
 
 void analysePdlpSolution(const HighsOptions& options, const HighsLp& lp,
                          const HighsSolution& highs_solution) {
-  for (HighsInt iCol = 0; iCol < lp.num_col_; iCol++)
-    printf("x[%2d] = %11.5g\n", int(iCol), highs_solution.col_value[iCol]);
-  for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++) {
-    printf("y[%2d] = %11.5g\n", int(iRow), highs_solution.row_dual[iRow]);
+  if (lp.num_col_ < 10) {
+    for (HighsInt iCol = 0; iCol < lp.num_col_; iCol++)
+      printf("x[%2d] = %11.5g\n", int(iCol), highs_solution.col_value[iCol]);
+  }
+  if (lp.num_row_ < 10) {
+    for (HighsInt iRow = 0; iRow < lp.num_row_; iRow++) {
+      printf("y[%2d] = %11.5g\n", int(iRow), highs_solution.row_dual[iRow]);
+    }
   }
 
   HighsInt num_primal_infeasibility = 0;
@@ -650,11 +654,12 @@ void analysePdlpSolution(const HighsOptions& options, const HighsLp& lp,
     const double complementary_violation = primal_residual * dual_residual;
     max_complementary_violation =
         std::max(complementary_violation, max_complementary_violation);
-    printf(
-        "%s %2d [%11.5g, %11.5g, %11.5g] has (primal_residual, dual) values "
-        "(%11.6g, %11.6g) so complementary_violation = %11.6g\n",
-        is_col ? "Column" : "Row   ", is_col ? int(iVar) : int(iRow), lower,
-        primal, upper, primal_residual, dual_residual, complementary_violation);
+    if (complementary_violation>0) 
+      printf(
+	     "%s %2d [%11.5g, %11.5g, %11.5g] has (primal_residual, dual) values "
+	     "(%11.6g, %11.6g) so complementary_violation = %11.6g\n",
+	     is_col ? "Column" : "Row   ", is_col ? int(iVar) : int(iRow), lower,
+	     primal, upper, primal_residual, dual_residual, complementary_violation);
   }
   printf("PDLP max complementary violation = %g\n",
          max_complementary_violation);
