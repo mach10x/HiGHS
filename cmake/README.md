@@ -147,9 +147,6 @@ Another thing specific for windows is the calling convention, particularly impor
     cmake --build build
 ```
 
-<!-- An extra note. With the legacy `-DFAST_BUILD=OFF`, under windows the build dll is called `highs.dll` however the exe expects `libhighs.dll` so a manual copy of `highs.dll` to `libhighs.dll` is needed. Of course all above options can be combined with each other. -->
-
-
 # CMake Options
 
 There are several options that can be passed to CMake to modify how the code

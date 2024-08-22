@@ -3,17 +3,13 @@ include(CTest)
 if (FORTRAN)
     set(CMAKE_Fortran_MODULE_DIRECTORY ${HIGHS_BINARY_DIR}/modules)
     add_executable(fortrantest TestFortranAPI.f90)
-    if (NOT FAST_BUILD)
-        target_link_libraries(fortrantest libhighs FortranHighs)
-    else()
-        target_link_libraries(fortrantest highs FortranHighs)
-    endif()
+    target_link_libraries(fortrantest highs FortranHighs)
     target_include_directories(fortrantest PUBLIC 
         ${HIGHS_SOURCE_DIR}/src/interfaces
         ${HIGHS_SOURCE_DIR}/check)
 endif()
 
-if (NOT FAST_BUILD OR ALL_TESTS)
+if (ALL_TESTS)
   # prepare Catch library
   set(CATCH_INCLUDE_DIR ${HIGHS_SOURCE_DIR}/extern)
   add_library(Catch INTERFACE)
@@ -92,11 +88,7 @@ if (NOT FAST_BUILD OR ALL_TESTS)
       target_compile_options(unit_tests PRIVATE "-Wno-unused-const-variable")
   endif()
 
-  if (FAST_BUILD)
-    target_link_libraries(unit_tests highs Catch)
-  else()
-    target_link_libraries(unit_tests libhighs Catch)
-  endif()
+  target_link_libraries(unit_tests highs Catch)
 
   include(GNUInstallDirs)
   if(APPLE)
@@ -114,11 +106,7 @@ if (NOT FAST_BUILD OR ALL_TESTS)
   # check the C API
   add_executable(capi_unit_tests TestCAPI.c)
 
-  if (FAST_BUILD)
-    target_link_libraries(capi_unit_tests highs)
-  else()
-    target_link_libraries(capi_unit_tests libhighs)
-  endif()
+  target_link_libraries(capi_unit_tests highs)
 
   add_test(NAME capi_unit_tests COMMAND capi_unit_tests)
 
@@ -255,13 +243,8 @@ if (NOT FAST_BUILD OR ALL_TESTS)
 
       # loop over all settings
       foreach(setting ${settings})
-          if (FAST_BUILD)
-            add_test(NAME ${name}${setting} COMMAND $<TARGET_FILE:highs-bin> ${setting}
-                ${inst})
-          else()
-            add_test(NAME ${name}${setting} COMMAND $<TARGET_FILE:highs> ${setting}
-                ${inst})
-          endif()
+          add_test(NAME ${name}${setting} COMMAND $<TARGET_FILE:highs-bin> ${setting}
+              ${inst})
 
           set_tests_properties (${name}${setting} PROPERTIES
                   DEPENDS unit_tests_all)
@@ -302,13 +285,8 @@ if (NOT FAST_BUILD OR ALL_TESTS)
       set(inst "${HIGHS_SOURCE_DIR}/check/instances/${name}.mps")
 
       foreach(setting ${settings})
-          if (FAST_BUILD)
-            add_test(NAME ${name}${setting} COMMAND $<TARGET_FILE:highs-bin> ${setting} 
-                --options_file ${CMAKE_BINARY_DIR}/testoptions.txt ${inst})
-          else()
-            add_test(NAME ${name}${setting} COMMAND $<TARGET_FILE:highs> ${setting}
-                --options_file ${CMAKE_BINARY_DIR}/testoptions.txt ${inst})
-          endif()
+        add_test(NAME ${name}${setting} COMMAND $<TARGET_FILE:highs-bin> ${setting} 
+            --options_file ${CMAKE_BINARY_DIR}/testoptions.txt ${inst})
 
           set_tests_properties (${name}${setting} PROPERTIES
                   DEPENDS unit_tests_all)

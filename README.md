@@ -2,7 +2,7 @@
 
 <!-- ![Build Status](https://github.com/ERGO-Code/HiGHS/actions/workflows/build.yml/badge.svg) -->
 
-[![Build Status][fast_build_svg]][fast_build_link] 
+[![Build Status][build_svg]][build_link] 
 [![Build Status][linux_build_svg]][linux_build_link] 
 [![Build Status][macos_build_svg]][macos_build_link] 
 [![Build Status][windows_build_svg]][windows_build_link] 
@@ -15,8 +15,8 @@
 [![NuGet version](https://img.shields.io/nuget/v/Highs.Native.svg)](https://www.nuget.org/packages/Highs.Native)
 [![NuGet download](https://img.shields.io/nuget/dt/Highs.Native.svg)](https://www.nuget.org/packages/Highs.Native)
 
-[fast_build_svg]: https://github.com/ERGO-Code/HiGHS/actions/workflows/build-fast.yml/badge.svg
-[fast_build_link]: https://github.com/ERGO-Code/HiGHS/actions/workflows/build-fast.yml
+[build_svg]: https://github.com/ERGO-Code/HiGHS/actions/workflows/build-fast.yml/badge.svg
+[build_link]: https://github.com/ERGO-Code/HiGHS/actions/workflows/build-fast.yml
 [linux_build_svg]: https://github.com/ERGO-Code/HiGHS/actions/workflows/build-linux.yml/badge.svg
 [linux_build_link]: https://github.com/ERGO-Code/HiGHS/actions/workflows/build-linux.yml
 [macos_build_svg]: https://github.com/ERGO-Code/HiGHS/actions/workflows/build-macos.yml/badge.svg

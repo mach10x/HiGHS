@@ -131,9 +131,9 @@ _incdirs += include_directories([
 ])
 
 # Optional arguments
-if get_option('fast_build')
-  add_project_arguments(cc.get_supported_arguments('-fno-omit-frame-pointer'), language : ['c', 'cpp'])
-endif
+# if get_option('fast_build')
+#   add_project_arguments(cc.get_supported_arguments('-fno-omit-frame-pointer'), language : ['c', 'cpp'])
+# endif
 
 if get_option('debug_sol')
   _args += ['-DHIGHS_DEBUGSOL']

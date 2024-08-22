@@ -36,7 +36,6 @@ if(EXISTS "${LOC_PATH}")
   message(FATAL_ERROR "You cannot build in a source directory (or any directory with a CMakeLists.txt file).
     Please make a build subdirectory. Feel free to remove CMakeCache.txt and CMakeFiles.")
 endif()
-option(FAST_BUILD "Fast build: " ON)
 
 # By default only build the C++ library.
 option(BUILD_CXX "Build C++ library" ON)
@@ -275,11 +274,6 @@ else()
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
-if(NOT FAST_BUILD)
-  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${HIGHS_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${HIGHS_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
-  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${HIGHS_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
-endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86\_64|i686)")
   if (WIN32)
@@ -336,7 +330,7 @@ if(MSVC)
   # add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
 endif()
 
-if(NOT FAST_BUILD OR FORTRAN)
+if(FORTRAN)
   include(CheckLanguage)
   check_language("Fortran")
   if(CMAKE_Fortran_COMPILER)
@@ -347,7 +341,7 @@ if(NOT FAST_BUILD OR FORTRAN)
   endif(CMAKE_Fortran_COMPILER)
 endif()
 
-if(NOT FAST_BUILD OR CSHARP)
+if(CSHARP)
   include(CheckLanguage)
   check_language("CSharp")
   if(CMAKE_CSharp_COMPILER)
@@ -394,167 +388,114 @@ message(STATUS "Git hash: " ${GITHASH})
 
 configure_file(${HIGHS_SOURCE_DIR}/src/HConfig.h.in ${HIGHS_BINARY_DIR}/HConfig.h)
 
-if(NOT FAST_BUILD)
-  # For the moment keep above coverage part in case we are testing at CI.
-  option(CI "CI extended tests" ON)
+# Coverage part
+# 'make coverage' to start the coverage process
+option(HIGHS_COVERAGE "Activate the code coverage compilation" OFF)
 
-  # Coverage part
-  # 'make coverage' to start the coverage process
-  option(HIGHS_COVERAGE "Activate the code coverage compilation" OFF)
-
-  if(HIGHS_COVERAGE)
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}    -O0 --coverage")
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}  -O0 --coverage")
-      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O0 --coverage")
-    endif()
-
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-      set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}   -fprofile-arcs -ftest-coverage -Xclang -coverage-cfg-checksum -Xclang -coverage-no-function-names-in-data -Xclang -coverage-version='408*'")
-      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage -Xclang -coverage-cfg-checksum -Xclang -coverage-no-function-names-in-data -Xclang -coverage-version='408*'")
-    endif()
+if(HIGHS_COVERAGE)
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "DEBUG")
+    message(FATAL_ERROR "Warning: to enable coverage, you must compile in DEBUG mode")
   endif()
 
-  if(HIGHS_COVERAGE)
-    if(NOT CMAKE_BUILD_TYPE STREQUAL "DEBUG")
-      message(FATAL_ERROR "Warning: to enable coverage, you must compile in DEBUG mode")
-    endif()
+  if(WIN32)
+    message(FATAL_ERROR "Error: code coverage analysis is only available under Linux for now.")
   endif()
 
-  if(HIGHS_COVERAGE)
-    if(WIN32)
-      message(FATAL_ERROR "Error: code coverage analysis is only available under Linux for now.")
-    endif()
-
-    find_program(GCOV_PATH gcov)
-    find_program(LCOV_PATH lcov)
-    find_program(GENHTML_PATH genhtml)
-
-    if(NOT GCOV_PATH)
-      message(FATAL_ERROR "gcov not found! Please install lcov and gcov. Aborting...")
-    endif()
-
-    if(NOT LCOV_PATH)
-      message(FATAL_ERROR "lcov not found! Please install lcov and gcov. Aborting...")
-    endif()
-
-    if(NOT GENHTML_PATH)
-      message(FATAL_ERROR "genhtml not found! Please install lcov and gcov. Aborting...")
-    endif()
-
-    # Capturing lcov counters and generating report
-    if(NOT CI)
-      add_custom_target(coverage
-        COMMAND ${LCOV_PATH} --directory ${CMAKE_BINARY_DIR} --zerocounters
-        COMMAND ${LCOV_PATH} --capture --initial --directory ${CMAKE_BINARY_DIR}/bin --output-file ${CMAKE_BINARY_DIR}/coverage.info
-        COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND} -LE "(LONG|FAIL)" || true
-        COMMAND ${LCOV_PATH} --capture --directory ${CMAKE_BINARY_DIR}/bin --directory ${CMAKE_BINARY_DIR}/src --directory ${CMAKE_BINARY_DIR}/app --directory ${CMAKE_BINARY_DIR}/check --output-file ${CMAKE_BINARY_DIR}/coverage.info
-        COMMAND ${LCOV_PATH} --remove "*/usr/include/*" --output-file ${CMAKE_BINARY_DIR}/coverage.info.cleaned
-        COMMAND ${GENHTML_PATH} -o ${CMAKE_BINARY_DIR}/coverage ${CMAKE_BINARY_DIR}/coverage.info.cleaned
-        COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/coverage.info.cleaned
-        VERBATIM
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Resetting code coverage counters to zero.
-    Processing code coverage counters and generating report.
-    You can zip the directory ${CMAKE_BINARY_DIR}/coverage and upload the content to a web server.")
-    else()
-      add_custom_target(ci_cov
-        COMMAND ${LCOV_PATH} --directory ${CMAKE_BINARY_DIR} --zerocounters
-        COMMAND ${LCOV_PATH} --capture --initial --directory ${CMAKE_BINARY_DIR}/bin --output-file ${CMAKE_BINARY_DIR}/coverage.info
-        COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND} -LE "(LONG|FAIL)" || true
-        COMMAND ${LCOV_PATH} --capture --directory ${CMAKE_BINARY_DIR}/bin --directory ${CMAKE_BINARY_DIR}/src --directory ${CMAKE_BINARY_DIR}/app --directory ${CMAKE_BINARY_DIR}/check --output-file ${CMAKE_BINARY_DIR}/coverage.info
-        VERBATIM
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Resetting code coverage counters to zero.")
-    endif()
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}    -O0 --coverage")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}  -O0 --coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O0 --coverage")
   endif()
 
-  include_directories(
-    ${HIGHS_BINARY_DIR}
-    ${HIGHS_SOURCE_DIR}/app
-    ${HIGHS_SOURCE_DIR}/extern
-    ${HIGHS_SOURCE_DIR}/extern/zstr
-    ${HIGHS_SOURCE_DIR}/src
-    ${HIGHS_SOURCE_DIR}/src/io
-    ${HIGHS_SOURCE_DIR}/src/pdlp/cupdlp
-    ${HIGHS_SOURCE_DIR}/src/ipm/ipx
-    ${HIGHS_SOURCE_DIR}/src/ipm/basiclu
-    ${HIGHS_SOURCE_DIR}/src/lp_data
-    ${HIGHS_SOURCE_DIR}/src/mip
-    ${HIGHS_SOURCE_DIR}/src/model
-    ${HIGHS_SOURCE_DIR}/src/presolve
-    ${HIGHS_SOURCE_DIR}/src/qpsolver
-    ${HIGHS_SOURCE_DIR}/src/simplex
-    ${HIGHS_SOURCE_DIR}/src/test
-    ${HIGHS_SOURCE_DIR}/src/util)
-
-  # explicitly switch on colored output for ninja
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if(CMAKE_GENERATOR STREQUAL "Ninja")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
-    endif()
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}   -fprofile-arcs -ftest-coverage -Xclang -coverage-cfg-checksum -Xclang -coverage-no-function-names-in-data -Xclang -coverage-version='408*'")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage -Xclang -coverage-cfg-checksum -Xclang -coverage-no-function-names-in-data -Xclang -coverage-version='408*'")
   endif()
 
-  # if(CMAKE_BUILD_TYPE STREQUAL Debug OR CMAKE_BUILD_TYPE STREQUAL debug)
-  #   enable_cxx_compiler_flag_if_supported("-D_GLIBCXX_DEBUG")
-  # endif()
+  find_program(GCOV_PATH gcov)
+  find_program(LCOV_PATH lcov)
+  find_program(GENHTML_PATH genhtml)
 
-  # Targets
-  add_subdirectory(src)
+  if(NOT GCOV_PATH)
+    message(FATAL_ERROR "gcov not found! Please install lcov and gcov. Aborting...")
+  endif()
+
+  if(NOT LCOV_PATH)
+    message(FATAL_ERROR "lcov not found! Please install lcov and gcov. Aborting...")
+  endif()
+
+  if(NOT GENHTML_PATH)
+    message(FATAL_ERROR "genhtml not found! Please install lcov and gcov. Aborting...")
+  endif()
+
+  # Capturing lcov counters and generating report
+  if(NOT CI)
+    add_custom_target(coverage
+      COMMAND ${LCOV_PATH} --directory ${CMAKE_BINARY_DIR} --zerocounters
+      COMMAND ${LCOV_PATH} --capture --initial --directory ${CMAKE_BINARY_DIR}/bin --output-file ${CMAKE_BINARY_DIR}/coverage.info
+      COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND} -LE "(LONG|FAIL)" || true
+      COMMAND ${LCOV_PATH} --capture --directory ${CMAKE_BINARY_DIR}/bin --directory ${CMAKE_BINARY_DIR}/src --directory ${CMAKE_BINARY_DIR}/app --directory ${CMAKE_BINARY_DIR}/check --output-file ${CMAKE_BINARY_DIR}/coverage.info
+      COMMAND ${LCOV_PATH} --remove "*/usr/include/*" --output-file ${CMAKE_BINARY_DIR}/coverage.info.cleaned
+      COMMAND ${GENHTML_PATH} -o ${CMAKE_BINARY_DIR}/coverage ${CMAKE_BINARY_DIR}/coverage.info.cleaned
+      COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/coverage.info.cleaned
+      VERBATIM
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "Resetting code coverage counters to zero.
+  Processing code coverage counters and generating report.
+  You can zip the directory ${CMAKE_BINARY_DIR}/coverage and upload the content to a web server.")
+endif()
+
+# explicitly switch on colored output for ninja
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_GENERATOR STREQUAL "Ninja")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
+  endif()
+endif()
+
+option(BUILD_EXAMPLES "Build examples" ON)
+message(STATUS "Build examples: ${BUILD_EXAMPLES}")
+
+CMAKE_DEPENDENT_OPTION(BUILD_CXX_EXAMPLE "Build cxx example" ON "BUILD_EXAMPLES;BUILD_CXX" OFF)
+message(STATUS "Build C++ example: ${BUILD_CXX_EXAMPLE}")
+CMAKE_DEPENDENT_OPTION(BUILD_CSHARP_EXAMPLE "Build CSharp example" ON "BUILD_EXAMPLES;CSHARP" OFF)
+message(STATUS "Build CSharp example: ${BUILD_CSHARP_EXAMPLE}")
+CMAKE_DEPENDENT_OPTION(BUILD_DOTNET "Build dotnet package" OFF "BUILD_EXAMPLES;CSHARP" OFF)
+message(STATUS "Build dotnet package: ${BUILD_DOTNET}")
+
+# CMAKE_DEPENDENT_OPTION(BUILD_CSHARP_EXAMPLE "Build Python example" ON "BUILD_EXAMPLES;PYTHON" OFF)
+# message(STATUS "Build CSharp example: ${BUILD_CSHARP_EXAMPLE}")
+
+include(cpp-highs)
+
+if(BUILD_CXX)
   add_subdirectory(app)
   if(BUILD_TESTING)
     enable_testing()
     add_subdirectory(check)
   endif()
-
-else(FAST_BUILD)
-  message(STATUS "FAST_BUILD set to on.")
-
-  option(BUILD_EXAMPLES "Build examples" ON)
-  message(STATUS "Build examples: ${BUILD_EXAMPLES}")
-
-  CMAKE_DEPENDENT_OPTION(BUILD_CXX_EXAMPLE "Build cxx example" ON "BUILD_EXAMPLES;BUILD_CXX" OFF)
-  message(STATUS "Build C++ example: ${BUILD_CXX_EXAMPLE}")
-  CMAKE_DEPENDENT_OPTION(BUILD_CSHARP_EXAMPLE "Build CSharp example" ON "BUILD_EXAMPLES;CSHARP" OFF)
-  message(STATUS "Build CSharp example: ${BUILD_CSHARP_EXAMPLE}")
-  CMAKE_DEPENDENT_OPTION(BUILD_DOTNET "Build dotnet package" OFF "BUILD_EXAMPLES;CSHARP" OFF)
-  message(STATUS "Build dotnet package: ${BUILD_DOTNET}")
-
-  # CMAKE_DEPENDENT_OPTION(BUILD_CSHARP_EXAMPLE "Build Python example" ON "BUILD_EXAMPLES;PYTHON" OFF)
-  # message(STATUS "Build CSharp example: ${BUILD_CSHARP_EXAMPLE}")
-
-  include(cpp-highs)
-
-  if(BUILD_CXX)
-    add_subdirectory(app)
-    if(BUILD_TESTING)
-      enable_testing()
-      add_subdirectory(check)
-    endif()
-    # Add tests in examples/tests
-    add_subdirectory(examples)
-  endif()
-
-  include(python-highs)
-
-  option(USE_DOTNET_STD_21 "Use .Net Standard 2.1 support" ON)
-  message(STATUS ".Net: Use .Net Framework 2.1 support: ${USE_DOTNET_STD_21}")
-
-  include(dotnet)
-
-  if(EXP)
-    add_executable(doctest)
-
-    # target_sources(doctest PRIVATE check/doctest/TestPresolveColumnSingletons.cpp)
-    target_sources(doctest PRIVATE check/doctest/TestPresolveIssue.cpp)
-
-    if(NOT APPLE)
-      # triggers hanging on macOS
-      target_sources(doctest PRIVATE check/doctest/TestGas11.cpp)
-    endif()
-
-    target_include_directories(doctest PRIVATE extern)
-    target_link_libraries(doctest highs)
-  endif()
-
+  # Add tests in examples/tests
+  add_subdirectory(examples)
 endif()
+
+include(python-highs)
+
+option(USE_DOTNET_STD_21 "Use .Net Standard 2.1 support" ON)
+message(STATUS ".Net: Use .Net Framework 2.1 support: ${USE_DOTNET_STD_21}")
+
+include(dotnet)
+
+if(EXP)
+  add_executable(doctest)
+
+  # target_sources(doctest PRIVATE check/doctest/TestPresolveColumnSingletons.cpp)
+  target_sources(doctest PRIVATE check/doctest/TestPresolveIssue.cpp)
+
+  if(NOT APPLE)
+    # triggers hanging on macOS
+    target_sources(doctest PRIVATE check/doctest/TestGas11.cpp)
+  endif()
+
+  target_include_directories(doctest PRIVATE extern)
+  target_link_libraries(doctest highs)
+endif()
+

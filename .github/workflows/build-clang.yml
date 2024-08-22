@@ -18,7 +18,7 @@ jobs:
       - name: Configure CMake
         shell: bash
         working-directory: ${{runner.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Debug -DFAST_BUILD=OFF
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Debug -DALL_TESTS=ON
 
       - name: Build
         working-directory: ${{runner.workspace}}/build
@@ -84,7 +84,7 @@ jobs:
       - name: Configure CMake
         shell: bash
         working-directory: ${{runner.workspace}}/build
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Debug -DFAST_BUILD=OFF -DHIGHSINT64=on
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=Debug -DALL_TESTS=ON -DHIGHSINT64=on
 
       - name: Build
         working-directory: ${{runner.workspace}}/build
