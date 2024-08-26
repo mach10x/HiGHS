@@ -17,6 +17,10 @@ target_compile_definitions(cudalin
 
 target_link_libraries(cudalin ${CUDA_LIBRARY} m)
 
+# find_package(CUDAToolkit)
+# target_link_libraries(project CUDA::cudart)
+# target_link_libraries(project CUDA::cuda_driver)
+
 # add a test
 add_executable(testcudalin test_cuda_linalg.c)
 add_executable(testcublas test_cublas.c)

@@ -4,7 +4,7 @@
 
 # Require CMake 3.15+ (matching scikit-build-core) Use new versions of all
 # policies up to CMake 3.27
-cmake_minimum_required(VERSION 3.15...3.27)
+cmake_minimum_required(VERSION 3.20...3.27)
 
 # set preference for clang compiler and intel compiler over gcc and other compilers
 include(Platform/${CMAKE_SYSTEM_NAME}-Determine-C OPTIONAL)
@@ -76,6 +76,11 @@ option(EMSCRIPTEN_HTML "Emscripten HTML output" OFF)
 
 option(CUPDLP_GPU "Build pdlp with nvidia" OFF)
 message(STATUS "Build pdlp with nvidia: ${CUPDLP_GPU}")
+
+if (NOT LINUX)
+  set (CUPDLP_GPU OFF)
+  message(STATUS "CUPLDP with Nvidia is only supported on Linux at the moment. Using CPU version.")
+endif()
 
 if (CUPDLP_GPU)
     list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
@@ -239,6 +244,12 @@ if (BUILD_CXX)
     message(STATUS "IPO / LTO: enabled")
   endif()
 endif()
+
+if (CUPDLP_GPU AND CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+    message(STATUS "IPO / LTO is not supported at the moment when PDLP is using GPU: LTO disabled.")
+endif()
+
 
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles(
