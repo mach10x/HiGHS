@@ -179,6 +179,11 @@ else()
   target_sources(highs PRIVATE ${sources} ${headers} ${win_version_file})
   target_include_directories(highs PRIVATE ${include_dirs})
 
+  # Optional Cuda 
+  if (CUPDLP_GPU)
+    add_subdirectory(cupdlp)
+  endif()
+
   if(MSVC)
     list(APPEND highs_compile_opts
       "/bigobj" # Allow big object

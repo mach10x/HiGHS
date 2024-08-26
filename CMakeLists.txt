@@ -74,6 +74,19 @@ endif()
 # emscripten
 option(EMSCRIPTEN_HTML "Emscripten HTML output" OFF)
 
+option(CUPDLP_GPU "Build pdlp with nvidia" OFF)
+message(STATUS "Build pdlp with nvidia: ${CUPDLP_GPU}")
+
+if (CUPDLP_GPU)
+    list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
+    message(NOTICE "Set build with CUDA ${BUILD_CUDA}")
+    include(FindCUDAConf.cmake)
+    set(CUPLDP_CPU OFF)
+else()
+    set(CUPLDP_CPU ON)
+    set(CUDA_LIBRARY-NOTFOUND true)
+endif()
+
 if (BUILD_CXX)
   # Default Build Type to be Release
   get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
