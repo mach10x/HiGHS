@@ -1,7 +1,7 @@
 #ifndef CUPDLP_H_GUARD
 #define CUPDLP_H_GUARD
 
-#define CUPDLP_CPU
+// #define CUPDLP_CPU
 #define CUPDLP_DEBUG (0)
 #define CUPDLP_TIMER
 
