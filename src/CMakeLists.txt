@@ -181,7 +181,7 @@ else()
 
   # Optional Cuda 
   if (CUPDLP_GPU)
-    add_subdirectory(cupdlp)
+    add_subdirectory(pdlp/cupdlp)
   endif()
 
   if(MSVC)

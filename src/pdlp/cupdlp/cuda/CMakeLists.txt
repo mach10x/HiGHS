@@ -1,10 +1,10 @@
 enable_language(CXX CUDA)
 
 add_library(cudalin SHARED
-       ${CUPDLP_INCLUDE_DIR}/cuda/cupdlp_cuda_kernels.cu
-       ${CUPDLP_INCLUDE_DIR}/cuda/cupdlp_cuda_kernels.cuh
-       ${CUPDLP_INCLUDE_DIR}/cuda/cupdlp_cudalinalg.cuh
-       ${CUPDLP_INCLUDE_DIR}/cuda/cupdlp_cudalinalg.cu
+       ${CMAKE_SOURCE_DIR}/src/pdlp/cupdlp/cuda/cupdlp_cuda_kernels.cu
+       ${CMAKE_SOURCE_DIR}/src/pdlp/cupdlp/cuda/cupdlp_cuda_kernels.cuh
+       ${CMAKE_SOURCE_DIR}/src/pdlp/cupdlp/cuda/cupdlp_cudalinalg.cuh
+       ${CMAKE_SOURCE_DIR}/src/pdlp/cupdlp/cuda/cupdlp_cudalinalg.cu
 )
 
 set_target_properties(cudalin PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
@@ -27,4 +27,3 @@ target_link_libraries(testcudalin PRIVATE cudalin ${CUDA_LIBRARY})
 
 set_target_properties(testcublas PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 target_link_libraries(testcublas PRIVATE cudalin ${CUDA_LIBRARY})
-
