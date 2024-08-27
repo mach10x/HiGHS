@@ -283,3 +283,5 @@ CMakeSettings.json
 # Nix
 .direnv/
 result
+
+_CPack_Packages*
