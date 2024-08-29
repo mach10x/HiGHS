@@ -119,6 +119,27 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
   CUPDLPwork* w = cupdlp_NULL;
   cupdlp_init_work(w, 1);
 
+#if !(CUPDLP_CPU)
+  cupdlp_float cuda_prepare_time = getTimeStamp();
+
+
+   cusparseStatus_t status = (cusparseCreate(&w->cusparsehandle));
+    if (status != CUSPARSE_STATUS_SUCCESS) {                               
+      printf("CUSPARSE API failed at line %d of %s with error: %s (%d)\n", 
+             __LINE__, __FILE__, cusparseGetErrorString(status), status);  
+      return HighsStatus::kError;                                                 
+    }       
+
+    cublasStatus_t status_blas = (cublasCreate(&w->cublashandle));                                      
+    if (status_blas != CUBLAS_STATUS_SUCCESS) {                               
+      printf("CUBLAS API failed at line %d of %s with error: %s (%d)\n", 
+             __LINE__, __FILE__, cublasGetStatusString(status_blas), status_blas); 
+      return HighsStatus::kError;                                                 
+    }                                                
+
+  cuda_prepare_time = getTimeStamp() - cuda_prepare_time;
+#endif
+
   problem_create(&prob);
 
   // currently, only supprot that input matrix is CSC, and store both CSC and

@@ -81,6 +81,39 @@ typedef double cupdlp_float;
       goto exit_cleanup;                                                       \
     }                                                                          \
   }
+#define CUPDLP_INIT_ZERO_INT_VEC(var, size)                                    \
+  {                                                                            \
+    cusparseStatus_t status =                                                  \
+        cudaMalloc((void **)&var, (size) * sizeof(typeof(*var)));              \
+    if (status != CUSPARSE_STATUS_SUCCESS) {                                   \
+      printf("CUSPARSE API failed at line %d with error: %s (%d)\n", __LINE__, \
+             cusparseGetErrorString(status), status);                          \
+      goto exit_cleanup;                                                       \
+    }                                                                          \
+    status = cudaMemset(var, 0, (size) * sizeof(typeof(*var)));                \
+    if (status != CUSPARSE_STATUS_SUCCESS) {                                   \
+      printf("CUSPARSE API failed at line %d with error: %s (%d)\n", __LINE__, \
+             cusparseGetErrorString(status), status);                          \
+      goto exit_cleanup;                                                       \
+    }                                                                          \
+  }
+
+#define CUPDLP_INIT_ZERO_DOUBLE_VEC(var, size)                                        \
+  {                                                                            \
+    cusparseStatus_t status =                                                  \
+        cudaMalloc((void **)&var, (size) * sizeof(typeof(*var)));              \
+    if (status != CUSPARSE_STATUS_SUCCESS) {                                   \
+      printf("CUSPARSE API failed at line %d with error: %s (%d)\n", __LINE__, \
+             cusparseGetErrorString(status), status);                          \
+      goto exit_cleanup;                                                       \
+    }                                                                          \
+    status = cudaMemset(var, 0, (size) * sizeof(typeof(*var)));                \
+    if (status != CUSPARSE_STATUS_SUCCESS) {                                   \
+      printf("CUSPARSE API failed at line %d with error: %s (%d)\n", __LINE__, \
+             cusparseGetErrorString(status), status);                          \
+      goto exit_cleanup;                                                       \
+    }                                                                          \
+  }
 #define CUPDLP_ZERO_VEC(var, type, size) \
   cudaMemset(var, 0, sizeof(type) * (size))
 
