@@ -13,7 +13,7 @@
 #include "cupdlp_linalg.h"
 #include "glbopts.h"
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 
 #include "cuda/cupdlp_cudalinalg.cuh"
 
@@ -30,7 +30,7 @@ void dense_clear(CUPDLPdense *dense) {
 
 cupdlp_int csc_clear(CUPDLPcsc *csc) {
   if (csc) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
     if (csc->cuda_csc != NULL) {
       CHECK_CUSPARSE(cusparseDestroySpMat(csc->cuda_csc))
     }
@@ -51,7 +51,7 @@ cupdlp_int csc_clear(CUPDLPcsc *csc) {
 
 cupdlp_int csr_clear(CUPDLPcsr *csr) {
   if (csr) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
     if (csr->cuda_csr != NULL) {
       CHECK_CUSPARSE(cusparseDestroySpMat(csr->cuda_csr))
     }
@@ -147,7 +147,7 @@ cupdlp_int vec_clear(CUPDLPvec *vec) {
     if (vec->data) {
       CUPDLP_FREE_VEC(vec->data);
     }
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
     CHECK_CUSPARSE(cusparseDestroyDnVec(vec->cuda_vec))
 #endif
     cupdlp_free(vec);
@@ -289,7 +289,7 @@ void stepsize_clear(CUPDLPstepsize *stepsize) {
 }
 
 void timers_clear(CUPDLPtimers *timers) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_printf("%20s %e\n", "Free Device memory", timers->FreeDeviceMemTime);
 #endif
 
@@ -324,7 +324,7 @@ cupdlp_int PDHG_Clear(CUPDLPwork *w) {
   if (w) {
     cupdlp_float begin = getTimeStamp();
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 
     // CUDAmv *MV = w->MV;
     // if (MV)
@@ -361,7 +361,7 @@ cupdlp_int PDHG_Clear(CUPDLPwork *w) {
       resobj_clear(resobj);
     }
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
     timers->FreeDeviceMemTime += getTimeStamp() - begin;
 #endif
 
@@ -989,7 +989,7 @@ cupdlp_retcode timers_Alloc(CUPDLPtimers *timers) {
   timers->nComputeResidualsCalls = 0;
   timers->nUpdateIterateCalls = 0;
 #endif
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   // GPU timers
   timers->AllocMem_CopyMatToDeviceTime = 0.0;
   timers->CopyVecToDeviceTime = 0.0;
@@ -1009,7 +1009,7 @@ cupdlp_retcode vec_Alloc(CUPDLPvec *vec, cupdlp_int n) {
 CUPDLP_INIT_ZERO_DOUBLE_VEC(vec->data, n);
 
   vec->len = n;
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   CHECK_CUSPARSE(
       cusparseCreateDnVec(&vec->cuda_vec, n, vec->data, CudaComputeType));
 #endif
@@ -1051,7 +1051,7 @@ cupdlp_retcode PDHG_Alloc(CUPDLPwork *w) {
                              w->problem->data->nRows));
   CUPDLP_CALL(stepsize_Alloc(w->stepsize));
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   //   CHECK_CUSPARSE(cusparseCreate(&w->cusparsehandle));
   //   CHECK_CUBLAS(cublasCreate(&w->cublashandle));
   cuda_alloc_MVbuffer(
@@ -1083,7 +1083,7 @@ exit_cleanup:
 void PDHG_Destroy(CUPDLPwork **w) {
   if (w && *w) {
     PDHG_Clear(*w);
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
     cudaDeviceReset();
 #endif
   }
@@ -1141,7 +1141,7 @@ cupdlp_int csc_copy(CUPDLPcsc *dst, CUPDLPcsc *src) {
   CUPDLP_COPY_VEC(dst->colMatElem, src->colMatElem, cupdlp_float,
                   src->nMatElem);
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   // Pointer to GPU csc matrix
   CHECK_CUSPARSE(cusparseCreateCsc(
       &dst->cuda_csc, src->nRows, src->nCols, src->nMatElem, dst->colMatBeg,
@@ -1198,7 +1198,7 @@ cupdlp_int csc2csr(CUPDLPcsr *csr, CUPDLPcsc *csc) {
   cupdlp_dcs_spfree(cs_csc);
   cupdlp_dcs_spfree(cs_csr);
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   // Pointer to GPU csc matrix
   CHECK_CUSPARSE(cusparseCreateCsr(
       &csr->cuda_csr, csr->nRows, csr->nCols, csr->nMatElem, csr->rowMatBeg,
@@ -1603,7 +1603,7 @@ void writeJson(const char *fout, CUPDLPwork *work) {
   fprintf(fptr, "\"dSolvingTime\":%f,", work->timers->dSolvingTime);
   fprintf(fptr, "\"dPresolveTime\":%f,", work->timers->dPresolveTime);
   fprintf(fptr, "\"dScalingTime\":%f,", work->timers->dScalingTime);
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   fprintf(fptr, "\"AllocMem_CopyMatToDeviceTime\":%f,",
           work->timers->AllocMem_CopyMatToDeviceTime);
   fprintf(fptr, "\"CopyVecToDeviceTime\":%f,",

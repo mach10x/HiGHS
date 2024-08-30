@@ -1,7 +1,7 @@
 #ifndef GLB_H_GUARD
 #define GLB_H_GUARD
 
-// #ifdef CUPDLP_GPU
+// #ifndef CUPDLP_CPU
 // #include <cublas_v2.h>         // cublas
 // #include <cuda_runtime_api.h>  // cudaMalloc, cudaMemcpy, etc.
 // #include <cusparse.h>          // cusparseSpMV
@@ -64,7 +64,7 @@ extern "C" {
 #endif
 
 // for cuda
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 
 // #define CUPDLP_FREE_VEC(x) \
 //   {                        \

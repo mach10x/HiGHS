@@ -22,13 +22,13 @@ The following line is not recognised by g++,
 
 so I've had to replace all ocurrences by
 
-> #ifdef CUPDLP_GPU
+> #ifndef CUPDLP_CPU
 
 This yields a compiler warning about "extra tokens at end of #ifndef
 directive" in the case of the following, but it's not a problem for
 now, as CUPDLP_CPU is set
 
-> #ifdef CUPDLP_GPU & USE_KERNELS
+> #ifndef CUPDLP_CPU & USE_KERNELS
 
 ## cmake issues
 

@@ -378,7 +378,7 @@ void cupdlp_init_vector(cupdlp_float *x, const cupdlp_float val,
   }
 }
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 
 void Ax_single_gpu(CUPDLPwork *w, cusparseDnVecDescr_t vecX,
                    cusparseDnVecDescr_t vecAx) {
@@ -461,7 +461,7 @@ void Ax(CUPDLPwork *w, CUPDLPvec *ax, const CUPDLPvec *x) {
       break;
     case SINGLE_GPU:
 
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
       Ax_single_gpu(w, x->cuda_vec, ax->cuda_vec);
 #else
       printf("GPU not supported in CPU build\n");
@@ -469,7 +469,7 @@ void Ax(CUPDLPwork *w, CUPDLPvec *ax, const CUPDLPvec *x) {
 #endif
       break;
     case MULTI_GPU:
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
       Ax_multi_gpu(d, ax, x);
 #else
       printf("GPU not supported in CPU build\n");
@@ -498,7 +498,7 @@ void ATy(CUPDLPwork *w, CUPDLPvec *aty, const CUPDLPvec *y)
       ATyCPU(w, aty->data, y->data);
       break;
     case SINGLE_GPU:
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
       ATy_single_gpu(w, y->cuda_vec, aty->cuda_vec);
 #else
       printf("GPU not supported in CPU build\n");
@@ -506,7 +506,7 @@ void ATy(CUPDLPwork *w, CUPDLPvec *aty, const CUPDLPvec *y)
 #endif
       break;
     case MULTI_GPU:
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
       ATy_multi_gpu(d, aty->data, y->data);
 #else
       printf("GPU not supported in CPU build\n");
@@ -531,7 +531,7 @@ void ATy(CUPDLPwork *w, CUPDLPvec *aty, const CUPDLPvec *y)
 cupdlp_int cupdlp_axpy(CUPDLPwork *w, const cupdlp_int n,
                        const cupdlp_float *alpha, const cupdlp_float *x,
                        cupdlp_float *y) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 #ifndef SFLOAT
   CHECK_CUBLAS(cublasDaxpy(w->cublashandle, n, alpha, x, 1, y, 1));
 #else
@@ -546,7 +546,7 @@ cupdlp_int cupdlp_axpy(CUPDLPwork *w, const cupdlp_int n,
 
 cupdlp_int cupdlp_dot(CUPDLPwork *w, const cupdlp_int n, const cupdlp_float *x,
                       const cupdlp_float *y, cupdlp_float *res) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 #ifndef SFLOAT
   CHECK_CUBLAS(cublasDdot(w->cublashandle, n, x, 1, y, 1, res));
 #else
@@ -560,7 +560,7 @@ cupdlp_int cupdlp_dot(CUPDLPwork *w, const cupdlp_int n, const cupdlp_float *x,
 
 cupdlp_int cupdlp_twoNorm(CUPDLPwork *w, const cupdlp_int n,
                           const cupdlp_float *x, cupdlp_float *res) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 #ifndef SFLOAT
   CHECK_CUBLAS(cublasDnrm2(w->cublashandle, n, x, 1, res));
 #else
@@ -574,7 +574,7 @@ cupdlp_int cupdlp_twoNorm(CUPDLPwork *w, const cupdlp_int n,
 
 cupdlp_int cupdlp_scaleVector(CUPDLPwork *w, const cupdlp_float weight,
                               cupdlp_float *x, const cupdlp_int n) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 #ifndef SFLOAT
   CHECK_CUBLAS(cublasDscal(w->cublashandle, n, &weight, x, 1));
 #else
@@ -629,7 +629,7 @@ void cupdlp_diffDotDiff(CUPDLPwork *w, const cupdlp_float *x1,
 
 /* element wise dot: x = x .* y*/
 void cupdlp_edot(cupdlp_float *x, const cupdlp_float *y, const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_edot_cuda(x, y, len);
 #else
   cupdlp_cdot(x, y, len);
@@ -638,7 +638,7 @@ void cupdlp_edot(cupdlp_float *x, const cupdlp_float *y, const cupdlp_int len) {
 
 /* element wise div: x = x ./ y*/
 void cupdlp_ediv(cupdlp_float *x, const cupdlp_float *y, const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_ediv_cuda(x, y, len);
 #else
   cupdlp_cdiv(x, y, len);
@@ -647,7 +647,7 @@ void cupdlp_ediv(cupdlp_float *x, const cupdlp_float *y, const cupdlp_int len) {
 
 void cupdlp_projlb(cupdlp_float *x, const cupdlp_float *lb,
                    const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_projlb_cuda(x, lb, len);
 #else
   cupdlp_projLowerBound(x, lb, len);
@@ -656,7 +656,7 @@ void cupdlp_projlb(cupdlp_float *x, const cupdlp_float *lb,
 
 void cupdlp_projub(cupdlp_float *x, const cupdlp_float *ub,
                    const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_projub_cuda(x, ub, len);
 #else
   cupdlp_projUpperBound(x, ub, len);
@@ -665,7 +665,7 @@ void cupdlp_projub(cupdlp_float *x, const cupdlp_float *ub,
 
 void cupdlp_projSamelb(cupdlp_float *x, const cupdlp_float lb,
                        const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_projSamelb_cuda(x, lb, len);
 #else
   cupdlp_projSameLowerBound(x, lb, len);
@@ -674,7 +674,7 @@ void cupdlp_projSamelb(cupdlp_float *x, const cupdlp_float lb,
 
 void cupdlp_projSameub(cupdlp_float *x, const cupdlp_float ub,
                        const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_projSameub_cuda(x, ub, len);
 #else
   cupdlp_projSameUpperBound(x, ub, len);
@@ -693,7 +693,7 @@ void cupdlp_projNeg(cupdlp_float *x, const cupdlp_int len) {
 
 void cupdlp_haslb(cupdlp_float *haslb, const cupdlp_float *lb,
                   const cupdlp_float bound, const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_haslb_cuda(haslb, lb, bound, len);
 #else
   cupdlp_hasLower(haslb, lb, bound, len);
@@ -702,7 +702,7 @@ void cupdlp_haslb(cupdlp_float *haslb, const cupdlp_float *lb,
 
 void cupdlp_hasub(cupdlp_float *hasub, const cupdlp_float *ub,
                   const cupdlp_float bound, const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_hasub_cuda(hasub, ub, bound, len);
 #else
   cupdlp_hasUpper(hasub, ub, bound, len);
@@ -711,7 +711,7 @@ void cupdlp_hasub(cupdlp_float *hasub, const cupdlp_float *ub,
 
 void cupdlp_filterlb(cupdlp_float *x, const cupdlp_float *lb,
                      const cupdlp_float bound, const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_filterlb_cuda(x, lb, bound, len);
 #else
   cupdlp_filter_lower_bound(x, lb, bound, len);
@@ -720,7 +720,7 @@ void cupdlp_filterlb(cupdlp_float *x, const cupdlp_float *lb,
 
 void cupdlp_filterub(cupdlp_float *x, const cupdlp_float *ub,
                      const cupdlp_float bound, const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_filterub_cuda(x, ub, bound, len);
 #else
   cupdlp_filter_upper_bound(x, ub, bound, len);
@@ -729,7 +729,7 @@ void cupdlp_filterub(cupdlp_float *x, const cupdlp_float *ub,
 
 void cupdlp_initvec(cupdlp_float *x, const cupdlp_float val,
                     const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_initvec_cuda(x, val, len);
 #else
   cupdlp_init_vector(x, val, len);
@@ -738,7 +738,7 @@ void cupdlp_initvec(cupdlp_float *x, const cupdlp_float val,
 
 void cupdlp_sub(cupdlp_float *xout, const cupdlp_float *x1,
                 const cupdlp_float *x2, const cupdlp_int len) {
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cupdlp_sub_cuda(xout, x1, x2, len);
 #else
   CUPDLP_COPY_VEC(xout, x1, cupdlp_float, len);

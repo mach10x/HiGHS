@@ -188,7 +188,7 @@ else()
 
     set_target_properties(highs PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-    # target_link_libraries(cudalin ${CUDA_LIBRARY} m)
+    target_link_libraries(highs ${CUDA_LIBRARY} m)
   endif()
 
   target_include_directories(highs PRIVATE ${include_dirs})

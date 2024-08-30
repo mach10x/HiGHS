@@ -3,7 +3,7 @@
 
 #include "cupdlp_defs.h"
 #include "cupdlp_utils.h"
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
 #include "cuda/cupdlp_cudalinalg.cuh"
 #endif
 
@@ -82,7 +82,7 @@ void AddToVector(cupdlp_float *x, const cupdlp_float weight,
 void ScaleVector(cupdlp_float weight, cupdlp_float *x, cupdlp_int n);
 
 // The main matrix-vector multiplication routines
-// #ifdef CUPDLP_GPU
+// #ifndef CUPDLP_CPU
 // Ax currently only works for CSC matrix multiply dense vector
 // void Ax(CUPDLPwork *w, cupdlp_float *ax, const cupdlp_float *x);
 // void Ax(CUPDLPwork *w, cupdlp_float *ax, void* vecAx, const cupdlp_float *x,
