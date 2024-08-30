@@ -183,9 +183,6 @@ else()
     enable_language(CXX CUDA)
     target_sources(highs PRIVATE ${cuda_sources})
 
-    target_include_directories(highs PUBLIC "/usr/local/cuda/include")
-    # target_include_directories(highs PUBLIC "/usr/include")
-
     set_target_properties(highs PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
     target_link_libraries(highs ${CUDA_LIBRARY} m)

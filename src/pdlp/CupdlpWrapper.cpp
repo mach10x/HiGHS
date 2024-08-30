@@ -444,7 +444,7 @@ cupdlp_retcode data_alloc(CUPDLPdata* data, cupdlp_int nRows, cupdlp_int nCols,
   data->csr_matrix = cupdlp_NULL;
   data->csc_matrix = cupdlp_NULL;
   data->device = CPU;
-#ifndef CUPDLP_GPU
+#ifdef CUPDLP_CPU
   data->device = CPU;
 #else
   data->device = SINGLE_GPU;
