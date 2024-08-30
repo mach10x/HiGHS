@@ -13,10 +13,10 @@ if (FORTRAN)
         ${HIGHS_SOURCE_DIR}/check)
 endif()
 
-if (CUPLDP_GPU)
+if (NOT CUPLDP_CPU)
     # add a test
-    add_executable(testcudalin test_cuda_linalg.c)
-    add_executable(testcublas test_cublas.c)
+    add_executable(testcudalin ${HIGHS_SOURCE_DIR}/src/pdlp/cupdlp/cuda/test_cuda_linalg.c)
+    add_executable(testcublas ${HIGHS_SOURCE_DIR}/src/pdlp/cupdlp/cuda/test_cublas.c)
 
     set_target_properties(testcudalin PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     #target_include_directories(cudalinalg PRIVATE ${CUPDLP_INCLUDE_DIR}/cuda)
