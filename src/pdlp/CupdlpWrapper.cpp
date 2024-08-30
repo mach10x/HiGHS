@@ -13,6 +13,7 @@
  * @author Julian Hall
  */
 #include "pdlp/CupdlpWrapper.h"
+#include "HConfig.h"
 
 void getUserParamsFromOptions(const HighsOptions& options,
                               cupdlp_bool* ifChangeIntParam,
@@ -119,9 +120,8 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
   CUPDLPwork* w = cupdlp_NULL;
   cupdlp_init_work(w, 1);
 
-#if !(CUPDLP_CPU)
+#ifndef CUPDLP_CPU
   cupdlp_float cuda_prepare_time = getTimeStamp();
-
 
    cusparseStatus_t status = (cusparseCreate(&w->cusparsehandle));
     if (status != CUSPARSE_STATUS_SUCCESS) {                               
@@ -444,7 +444,7 @@ cupdlp_retcode data_alloc(CUPDLPdata* data, cupdlp_int nRows, cupdlp_int nCols,
   data->csr_matrix = cupdlp_NULL;
   data->csc_matrix = cupdlp_NULL;
   data->device = CPU;
-#if CUPDLP_CPU
+#ifdef CUPDLP_CPU
   data->device = CPU;
 #else
   data->device = SINGLE_GPU;

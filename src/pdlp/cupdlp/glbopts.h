@@ -70,8 +70,8 @@ extern "C" {
 //     x = cupdlp_NULL;       \
 //   }
 
-// #define CUPDLP_COPY_VEC(dst, src, type, size) \
-//   cudaMemcpy(dst, src, sizeof(type) * (size), cudaMemcpyDefault)
+#define CUPDLP_COPY_VEC(dst, src, type, size) \
+  cudaMemcpy(dst, src, sizeof(type) * (size), cudaMemcpyDefault)
 
 // #define CUPDLP_INIT_VEC(var, size)                                             \
 //   {                                                                            \

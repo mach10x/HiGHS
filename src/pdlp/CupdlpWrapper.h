@@ -20,6 +20,8 @@
 #include "lp_data/HighsSolution.h"
 #include "pdlp/cupdlp/cupdlp.h"
 
+#include "HConfig.h"
+
 typedef enum CONSTRAINT_TYPE { EQ = 0, LEQ, GEQ, BOUND } constraint_type;
 
 #define cupdlp_init_int(var, size) \

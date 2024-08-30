@@ -74,21 +74,19 @@ endif()
 # emscripten
 option(EMSCRIPTEN_HTML "Emscripten HTML output" OFF)
 
-option(CUPDLP_GPU "Build pdlp with nvidia" OFF)
-message(STATUS "Build pdlp with nvidia: ${CUPDLP_GPU}")
+option(CUPDLP_CPU "Build pdlp with CPU" ON)
+message(STATUS "Build pdlp with CPU: ${CUPDLP_CPU}")
 
 if (NOT LINUX)
   set (CUPDLP_GPU OFF)
   message(STATUS "CUPLDP with Nvidia is only supported on Linux at the moment. Using CPU version.")
 endif()
 
-if (CUPDLP_GPU)
+if (NOT CUPDLP_CPU)
     list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
-    message(NOTICE "Set build with CUDA ${BUILD_CUDA}")
+    message(NOTICE "Set build cuPDLP with CUDA")
     include(FindCUDAConf.cmake)
-    set(CUPLDP_CPU OFF)
 else()
-    set(CUPLDP_CPU ON)
     set(CUDA_LIBRARY-NOTFOUND true)
 endif()
 

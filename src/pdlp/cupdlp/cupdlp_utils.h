@@ -10,6 +10,7 @@
 #include <time.h>
 #endif
 #include "cupdlp_defs.h"
+#include "HConfig.h"
 
 #ifdef __cplusplus
 extern "C" {
