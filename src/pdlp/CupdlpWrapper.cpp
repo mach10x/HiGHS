@@ -120,7 +120,7 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
   CUPDLPwork* w = cupdlp_NULL;
   cupdlp_init_work(w, 1);
 
-#ifndef CUPDLP_CPU
+#ifdef CUPDLP_GPU
   cupdlp_float cuda_prepare_time = getTimeStamp();
 
    cusparseStatus_t status = (cusparseCreate(&w->cusparsehandle));
@@ -154,7 +154,7 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
   memcpy(csc_cpu->colMatBeg, csc_beg, (nCols + 1) * sizeof(int));
   memcpy(csc_cpu->colMatIdx, csc_idx, nnz * sizeof(int));
   memcpy(csc_cpu->colMatElem, csc_val, nnz * sizeof(double));
-#ifndef CUPDLP_CPU
+#ifdef CUPDLP_GPU
   csc_cpu->cuda_csc = NULL;
 #endif
 
@@ -184,7 +184,7 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
 #endif
 
 // do I need this? 
-#ifndef CUPDLP_CPU
+#ifdef CUPDLP_GPU
   w->timers->AllocMem_CopyMatToDeviceTime += alloc_matrix_time;
   w->timers->CopyVecToDeviceTime += copy_vec_time;
   w->timers->CudaPrepareTime = cuda_prepare_time;

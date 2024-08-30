@@ -985,7 +985,7 @@ cupdlp_retcode PDHG_Solve(CUPDLPwork* pdhg) {
   }
 #endif
 
-#ifndef CUPDLP_CPU
+#ifdef CUPDLP_GPU
   if (pdhg->settings->nLogLevel > 0) {
     cupdlp_printf("\n");
     cupdlp_printf("GPU Timing information:\n");

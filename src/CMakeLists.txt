@@ -177,12 +177,21 @@ else()
   #   $<BUILD_INTERFACE:${HIGHS_SOURCE_DIR}/extern/pdqsort>)
 
   target_sources(highs PRIVATE ${sources} ${headers} ${win_version_file})
-  target_include_directories(highs PRIVATE ${include_dirs})
-
+  
   # Optional Cuda 
   if (CUPDLP_GPU)
-    add_subdirectory(pdlp/cupdlp)
+    enable_language(CXX CUDA)
+    target_sources(highs PRIVATE ${cuda_sources})
+
+    # target_include_directories(highs PUBLIC "/usr/local/cuda/include")
+    # target_include_directories(highs PUBLIC "/usr/include")
+
+    set_target_properties(highs PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+    # target_link_libraries(cudalin ${CUDA_LIBRARY} m)
   endif()
+
+  target_include_directories(highs PRIVATE ${include_dirs})
 
   if(MSVC)
     list(APPEND highs_compile_opts
