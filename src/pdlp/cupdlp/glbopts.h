@@ -7,13 +7,14 @@
 // #include <cusparse.h>          // cusparseSpMV
 // #endif
 
+#include "HConfig.h"
+
 #ifdef __cplusplus
 
 extern "C" {
 #endif
 
 #include <math.h>
-#include "HConfig.h"
 
 // return code
 #define RETCODE_OK (0)

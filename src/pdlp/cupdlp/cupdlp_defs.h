@@ -5,7 +5,9 @@
 #define CUPDLP_DEBUG (0)
 #define CUPDLP_TIMER
 
-#ifdef CUPDLP_GPU
+#include "HConfig.h"
+
+#ifndef CUPDLP_CPU
 #include "cuda/cupdlp_cuda_kernels.cuh"
 #include "cuda/cupdlp_cudalinalg.cuh"
 #endif
@@ -123,7 +125,7 @@ typedef enum {
 struct CUPDLP_CUDA_DENSE_VEC {
   cupdlp_int len;
   cupdlp_float *data;
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   cusparseDnVecDescr_t cuda_vec;
 #endif
 };
@@ -141,7 +143,7 @@ struct CUPDLP_CSR_MATRIX {
   cupdlp_int *rowMatBeg;
   cupdlp_int *rowMatIdx;
   cupdlp_float *rowMatElem;
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   // Pointers to GPU vectors
   cusparseSpMatDescr_t cuda_csr;
 #endif
@@ -157,7 +159,7 @@ struct CUPDLP_CSC_MATRIX {
 
   // Used to avoid implementing NormInf on cuda
   cupdlp_float MatElemNormInf;
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   // Pointers to GPU vectors
   cusparseSpMatDescr_t cuda_csc;
 #endif
@@ -383,7 +385,7 @@ struct CUPDLP_TIMERS {
   cupdlp_int nComputeResidualsCalls;
   cupdlp_int nUpdateIterateCalls;
 #endif
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   // GPU timers
   cupdlp_float AllocMem_CopyMatToDeviceTime;
   cupdlp_float CopyVecToDeviceTime;
@@ -409,7 +411,7 @@ struct CUPDLP_WORK {
 
   cupdlp_float *rowScale;
   cupdlp_float *colScale;
-#ifdef CUPDLP_GPU
+#ifndef CUPDLP_CPU
   // CUDAmv *MV;
   cusparseHandle_t cusparsehandle;
   void *dBuffer;
