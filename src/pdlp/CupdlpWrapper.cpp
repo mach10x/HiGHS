@@ -444,7 +444,7 @@ cupdlp_retcode data_alloc(CUPDLPdata* data, cupdlp_int nRows, cupdlp_int nCols,
   data->csr_matrix = cupdlp_NULL;
   data->csc_matrix = cupdlp_NULL;
   data->device = CPU;
-#ifdef CUPDLP_CPU
+#ifndef CUPDLP_GPU
   data->device = CPU;
 #else
   data->device = SINGLE_GPU;
@@ -521,7 +521,7 @@ cupdlp_retcode problem_alloc(
 
   begin = getTimeStamp();
 
-#ifdef CUPDLP_CPU
+#ifndef CUPDLP_GPU
   cupdlp_copy_vec(prob->cost, cost, cupdlp_float, nCols);
   cupdlp_copy_vec(prob->rhs, rhs, cupdlp_float, nRows);
   cupdlp_copy_vec(prob->lower, lower, cupdlp_float, nCols);

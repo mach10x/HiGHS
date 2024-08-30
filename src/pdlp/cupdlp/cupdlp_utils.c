@@ -1325,7 +1325,7 @@ cupdlp_retcode dense_alloc_matrix(CUPDLPdense *dense, cupdlp_int nRows,
                                   CUPDLP_MATRIX_FORMAT src_matrix_format) {
   cupdlp_retcode retcode = RETCODE_OK;
 
-  CUPDLP_INIT_ZERO_VEC(dense->data, nRows * nCols);
+  CUPDLP_INIT_ZERO_DOUBLE_VEC(dense->data, nRows * nCols);
 
   switch (src_matrix_format) {
     case DENSE:

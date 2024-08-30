@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include <math.h>
+#include "HConfig.h"
 
 // return code
 #define RETCODE_OK (0)
