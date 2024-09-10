@@ -13,7 +13,7 @@ if (FORTRAN)
         ${HIGHS_SOURCE_DIR}/check)
 endif()
 
-if (NOT CUPLDP_CPU)
+if (CUPLDP_GPU)
     # add a test
     add_executable(testcudalin ${HIGHS_SOURCE_DIR}/src/pdlp/cupdlp/cuda/test_cuda_linalg.c)
     add_executable(testcublas ${HIGHS_SOURCE_DIR}/src/pdlp/cupdlp/cuda/test_cublas.c)

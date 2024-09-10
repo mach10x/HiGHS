@@ -15,6 +15,11 @@
 #include "pdlp/CupdlpWrapper.h"
 #include "HConfig.h"
 
+#ifndef CUPDLP_CPU
+#include "cuda/cupdlp_cudalinalg.cuh"
+#endif
+
+
 void getUserParamsFromOptions(const HighsOptions& options,
                               cupdlp_bool* ifChangeIntParam,
                               cupdlp_int* intParam,
@@ -78,7 +83,9 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
   //
   //  HighsInt size_of_CUPDLPscaling = sizeof(CUPDLPscaling);
   //
-  CUPDLPscaling* scaling = (CUPDLPscaling*)cupdlp_malloc(sizeof(CUPDLPscaling));
+
+  CUPDLPscaling scaling_;
+  CUPDLPscaling* scaling = &scaling_;
 
   // WIP on zbook?
   //
@@ -137,14 +144,24 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
       return HighsStatus::kError;                                                 
     }                                                
 
+    // double value = 1.0;
+    // double * param = &value;
+    // double result = 0.0;
+    // // CHECK_CUBLAS(cublasDdot(w->cublashandle, n, x, 1, y, 1, res));
+    // cublasStatus_t status_dot = cublasDdot(w->cublashandle, 1, param, 1, param, 1, &result);
+
   cuda_prepare_time = getTimeStamp() - cuda_prepare_time;
 #endif
 
-  problem_create(&prob);
+  // problem_create(&prob);
+  CUPDLPproblem prob_;
+  prob = &prob_;
 
   // currently, only supprot that input matrix is CSC, and store both CSC and
   // CSR
-  csc_create(&csc_cpu);
+  // csc_create(&csc_cpu);
+  CUPDLPcsc csc_cpu_;
+  csc_cpu = &csc_cpu_;
   csc_cpu->nRows = nRows;
   csc_cpu->nCols = nCols;
   csc_cpu->nMatElem = nnz;
@@ -183,7 +200,6 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
   cupdlp_copy_vec_cuda(w->colScale, scaling->colScale, cupdlp_float, nCols);
 #endif
 
-// do I need this? 
 #ifndef CUPDLP_CPU
   w->timers->AllocMem_CopyMatToDeviceTime += alloc_matrix_time;
   w->timers->CopyVecToDeviceTime += copy_vec_time;
@@ -244,6 +260,51 @@ HighsStatus solveLpCupdlp(const HighsOptions& options, HighsTimer& timer,
 #if CUPDLP_DEBUG
   analysePdlpSolution(options, lp, highs_solution);
 #endif
+
+  free(cost);
+  free(lower);
+  free(upper);
+  free(csc_beg);
+  free(csc_idx);
+  free(csc_val);
+  free(rhs);
+
+  free(x_origin);
+  free(y_origin);
+
+  free(constraint_new_idx);
+
+  free(prob->cost);
+  free(prob->lower);
+  free(prob->upper);
+  free(prob->rhs);
+   
+  free(prob->hasLower);
+  free(prob->hasUpper);
+
+  free(prob->data->csr_matrix->rowMatBeg);
+  free(prob->data->csr_matrix->rowMatIdx);
+  free(prob->data->csr_matrix->rowMatElem);
+  free(prob->data->csr_matrix);
+   
+  free(prob->data->csc_matrix->colMatBeg);
+  free(prob->data->csc_matrix->colMatIdx);
+  free(prob->data->csc_matrix->colMatElem);
+  free(prob->data->csc_matrix);
+
+  free(prob->data);
+
+  free(csc_cpu->colMatBeg);
+  free(csc_cpu->colMatIdx);
+  free(csc_cpu->colMatElem);
+
+  // PDHG_Destroy(w);
+  // if (w->buffer2) 
+  //   free(w->buffer2);
+  // if (w->buffer3)
+  //   free(w->buffer3);
+  // free(csc_cpu);
+
   return HighsStatus::kOk;
 }
 
@@ -463,17 +524,36 @@ cupdlp_retcode data_alloc(CUPDLPdata* data, cupdlp_int nRows, cupdlp_int nCols,
       break;
     case CSC:
       csc_create(&data->csc_matrix);
+      // data->csc_matrix = new CUPDLP_CSC_MATRIX;
       csc_alloc_matrix(data->csc_matrix, nRows, nCols, matrix,
                        src_matrix_format);
       break;
     case CSR_CSC:
-      csc_create(&data->csc_matrix);
+    {
+      cupdlp_retcode stat = csc_create(&data->csc_matrix);
+
+      // int value1 = 0.0;
+      // double value2 = 0.0;
+      // double value3 = 0.0;
+      // data->csc_matrix->colMatBeg = &value1;
+
+      // if (data->csc_matrix->colMatBeg == nullptr)
+      //   data->csc_matrix->colMatBeg = (int*)malloc((nCols + 1) * sizeof(int)); 
+
+      // if (data->csc_matrix->colMatIdx == nullptr)
+      //   data->csc_matrix->colMatIdx = (int*)malloc(sizeof(int)); 
+
+      // if (data->csc_matrix->colMatElem == nullptr)
+      //   data->csc_matrix->colMatElem = (double*)malloc(sizeof(double)); 
+
       csc_alloc_matrix(data->csc_matrix, nRows, nCols, matrix,
                        src_matrix_format);
       csr_create(&data->csr_matrix);
       csr_alloc_matrix(data->csr_matrix, nRows, nCols, matrix,
                        src_matrix_format);
       break;
+    }
+
     default:
       break;
   }
