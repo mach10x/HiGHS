@@ -63,9 +63,8 @@ HighsMipSolver::HighsMipSolver(HighsCallback& callback,
       obj += orig_model_->col_cost_[i] * value;
 
       if (orig_model_->integrality_[i] == HighsVarType::kInteger) {
-        double intval = std::floor(value + 0.5);
         integrality_violation_ =
-            std::max(fabs(intval - value), integrality_violation_);
+            std::max(fractionality(value), integrality_violation_);
       }
 
       const double lower = orig_model_->col_lower_[i];
@@ -176,10 +175,6 @@ restart:
     mipdata_->cutpool.performAging();
   }
   if (mipdata_->nodequeue.empty() || mipdata_->checkLimits()) {
-    if (!submip)
-      printf(
-          "HighsMipSolver::run() mipdata_->nodequeue.empty() || "
-          "mipdata_->checkLimits()\n");
     cleanupSolve();
     return;
   }
@@ -591,14 +586,13 @@ void HighsMipSolver::cleanupSolve() {
   else
     gap_ = kHighsInf;
 
-  std::array<char, 128> gapString;
+  std::array<char, 128> gapString = {};
 
   if (gap_ == kHighsInf)
     std::strcpy(gapString.data(), "inf");
   else {
     double printTol = std::max(std::min(1e-2, 1e-1 * gap_), 1e-6);
-    std::array<char, 32> gapValString =
-        highsDoubleToString(100.0 * gap_, printTol);
+    auto gapValString = highsDoubleToString(100.0 * gap_, printTol);
     double gapTol = options_mip_->mip_rel_gap;
 
     if (options_mip_->mip_abs_gap > options_mip_->mip_feasibility_tolerance) {
@@ -613,8 +607,7 @@ void HighsMipSolver::cleanupSolve() {
                     gapValString.data());
     else if (gapTol != kHighsInf) {
       printTol = std::max(std::min(1e-2, 1e-1 * gapTol), 1e-6);
-      std::array<char, 32> gapTolString =
-          highsDoubleToString(100.0 * gapTol, printTol);
+      auto gapTolString = highsDoubleToString(100.0 * gapTol, printTol);
       std::snprintf(gapString.data(), gapString.size(),
                     "%s%% (tolerance: %s%%)", gapValString.data(),
                     gapTolString.data());
