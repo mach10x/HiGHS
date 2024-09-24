@@ -128,14 +128,6 @@ enum class MatrixFormat { kColwise = 1, kRowwise, kRowwisePartitioned };
 
 enum class HessianFormat { kTriangular = 1, kSquare };
 
-enum HighsSolutionStatus {
-  kSolutionStatusNone = 0,
-  kSolutionStatusInfeasible,
-  kSolutionStatusFeasible,
-  kSolutionStatusMin = kSolutionStatusNone,
-  kSolutionStatusMax = kSolutionStatusFeasible
-};
-
 enum SolutionStatus {
   kSolutionStatusNone = 0,
   kSolutionStatusInfeasible,
