@@ -81,3 +81,46 @@ TEST_CASE("test-analytic-centre-box", "[highs_ipm]") {
   REQUIRE(solution_norm < 1e-6);
   if (dev_run) printf("Analytic centre solution norm is %g\n", solution_norm);
 }
+
+
+TEST_CASE("ipm-primal-dual-infeasible-instance", "[highs_ipm]") {
+  Highs highs;
+  highs.setOptionValue("output_flag", dev_run);
+  const HighsInt dim = 2;
+  HighsLp lp;
+
+  lp.num_col_ = dim;
+  lp.num_row_ = dim;
+
+  lp.col_cost_ = {2.0, -1.0};
+  lp.sense_ = ObjSense::kMaximize;
+
+  lp.col_lower_ = {dim, 0.0};
+  lp.col_upper_= {dim, kHighsInf};
+
+  lp.row_lower_= {-kHighsInf, 2.0};
+  lp.row_upper_= {1.0, kHighsInf};
+
+  lp.a_matrix_.start_ = {0, 2, 4};
+  lp.a_matrix_.index_ = {0, 1, 0, 1};
+  lp.a_matrix_.value_ = {1, 1, -1, -1};
+
+  HighsStatus status = highs.passModel(lp);
+  REQUIRE(status == HighsStatus::kOk);
+
+  highs.setOptionValue("presolve", kHighsOffString);
+  highs.setOptionValue("solver", "ipm");
+
+  HighsStatus run_status = highs.run();
+  const HighsSolution& solution = highs.getSolution();
+  const HighsInfo& info = highs.getInfo();
+
+  std::cout << solution.value_valid << std::endl;
+  std::cout << solution.dual_valid << std::endl;
+
+    
+  std::cout << info.primal_solution_status << std::endl;
+  std::cout << info.dual_solution_status << std::endl;
+
+  REQUIRE(info.primal_solution_status == kSolutionStatusInfeasible);
+}
