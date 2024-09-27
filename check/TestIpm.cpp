@@ -111,6 +111,8 @@ TEST_CASE("ipm-primal-dual-infeasible-instance", "[highs_ipm]") {
   highs.setOptionValue("presolve", kHighsOffString);
   highs.setOptionValue("solver", "ipm");
 
+  const HighsOptions& options = highs.getOptions();
+
   HighsStatus run_status = highs.run();
   const HighsSolution& solution = highs.getSolution();
   const HighsInfo& info = highs.getInfo();
@@ -121,6 +123,7 @@ TEST_CASE("ipm-primal-dual-infeasible-instance", "[highs_ipm]") {
     
   std::cout << info.primal_solution_status << std::endl;
   std::cout << info.dual_solution_status << std::endl;
-
+  std::cout << solution.col_value[0] << " " << solution.col_value[1] << std::endl;
+  std::cout << solution.col_dual[0] << " " << solution.col_dual[1] << std::endl;
   REQUIRE(info.primal_solution_status == kSolutionStatusInfeasible);
 }
