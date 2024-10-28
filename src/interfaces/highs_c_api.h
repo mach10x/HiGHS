@@ -18,7 +18,7 @@
 // Highs_mipCall or Highs_qpCall, and these methods return the
 // appropriate solution information
 //
-// For sophisticated applications, where esoteric solutiuon
+// For sophisticated applications, where esoteric solution
 // information is needed, or if a sequence of modified models need to
 // be solved, use the Highs_create method to generate a pointer to an
 // instance of the C++ Highs class, and then use any of a large number
@@ -580,6 +580,16 @@ HighsInt Highs_passRowName(const void* highs, const HighsInt row,
  */
 HighsInt Highs_passColName(const void* highs, const HighsInt col,
                            const char* name);
+
+/**
+ * Pass the name of the model.
+ *
+ * @param highs A pointer to the Highs instance.
+ * @param name  The name of the model.
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+HighsInt Highs_passModelName(const void* highs, const char* name);
 
 /**
  * Read the option values from file.

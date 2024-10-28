@@ -63,9 +63,8 @@ HighsMipSolver::HighsMipSolver(HighsCallback& callback,
       obj += orig_model_->col_cost_[i] * value;
 
       if (orig_model_->integrality_[i] == HighsVarType::kInteger) {
-        double intval = std::floor(value + 0.5);
         integrality_violation_ =
-            std::max(fabs(intval - value), integrality_violation_);
+            std::max(fractionality(value), integrality_violation_);
       }
 
       const double lower = orig_model_->col_lower_[i];
@@ -618,7 +617,12 @@ void HighsMipSolver::cleanupSolve() {
   }
 
   highsLogUser(options_mip_->log_options, HighsLogType::kInfo,
-               "\nSolving report\n"
+               "\nSolving report\n");
+  if (this->orig_model_->model_name_.length())
+    highsLogUser(options_mip_->log_options, HighsLogType::kInfo,
+                 "  Model             %s\n",
+                 this->orig_model_->model_name_.c_str());
+  highsLogUser(options_mip_->log_options, HighsLogType::kInfo,
                "  Status            %s\n"
                "  Primal bound      %.12g\n"
                "  Dual bound        %.12g\n"
