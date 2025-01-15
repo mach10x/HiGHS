@@ -66,7 +66,7 @@ message(STATUS "Build Fortran: ${FORTRAN}")
 option(CSHARP "Build CSharp interface" OFF)
 message(STATUS "Build CSharp: ${CSHARP}")
 
-if (FORTRAN OR CSHARP)
+if (FORTRAN)
   set(BUILD_SHARED_LIBS ON)
 endif()
 
@@ -678,6 +678,11 @@ else(FAST_BUILD)
   option(USE_DOTNET_STD_21 "Use .Net Standard 2.1 support" ON)
   message(STATUS ".Net: Use .Net Framework 2.1 support: ${USE_DOTNET_STD_21}")
 
+  if (CSHARP AND UNIX)
+      set(BUILD_SHARED_LIBS OFF)
+      message(STATUS "CSharp: shared libs ${BUILD_SHARED_LIBS}")
+  endif()
+      
   include(dotnet)
 
   if(EXP)
