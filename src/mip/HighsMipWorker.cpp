@@ -7,8 +7,11 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "mip/HighsMipWorker.h"
 
+#include "mip/HighsSearch.h"
+
 HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__)
     : mipsolver_(mipsolver__),
+      // mipsolver_worker_(mipsolver__),
       lprelaxation_(mipsolver__),
       cutpool_(mipsolver__.numCol(),
                mipsolver__.options_mip_->mip_pool_age_limit,
@@ -18,8 +21,7 @@ HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__)
       cliquetable_(mipsolver__.numCol()),
       // mipsolver(mipsolver__),
       pseudocost_(mipsolver__),
-      // search_(*this, pseudocost_),
-      search_(mipsolver_, pseudocost_),
+      // search_(mipsolver_, pseudocost_),
 
       pscostinit_(pseudocost_, 1),
       clqtableinit_(mipsolver_.numCol()),
@@ -29,8 +31,12 @@ HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__)
       implicinit(implicinit_),
       clqtableinit(clqtableinit_) {
   // Register cutpool and conflict pool in local search domain.
-  search_.getLocalDomain().addCutpool(cutpool_);
-  search_.getLocalDomain().addConflictPool(conflictpool_);
+
+  // search_ptr_= std::unique_ptr<HighsSearch>(new HighsSearch(mipsolver_, pseudocost_));
+  search_ptr_= std::unique_ptr<HighsSearch>(new HighsSearch(*this, pseudocost_));
+
+  search_ptr_->getLocalDomain().addCutpool(cutpool_);
+  search_ptr_->getLocalDomain().addConflictPool(conflictpool_);
 
   // Initialize mipdata_.
   // mipdata_ = decltype(mipdata_)(new HighsMipSolverData(mipsolver__));
@@ -39,4 +45,4 @@ HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__)
 
 const HighsMipSolver& HighsMipWorker::getMipSolver() { return mipsolver_; }
 
-HighsSearch& HighsMipWorker::getSearch() { return search_; }
+HighsSearch& HighsMipWorker::getSearch() { return *search_ptr_; }

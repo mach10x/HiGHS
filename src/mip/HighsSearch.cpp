@@ -15,17 +15,18 @@
 #include "mip/HighsMipSolverData.h"
 #include "mip/MipTimer.h"
 
-// HighsSearch::HighsSearch(HighsMipWorker& mipworker, HighsPseudocost&
-// pseudocost)
-//     : mipworker(mipworker),
-//       mipsolver(mipworker.getMipSolver()),
-//      localdom(mipworker.getMipSolver().mipdata_->domain),
-
-HighsSearch::HighsSearch(const HighsMipSolver& mipsolver,
-                         HighsPseudocost& pseudocost)
-    : mipsolver(mipsolver),
+HighsSearch::HighsSearch(HighsMipWorker& mipworker, HighsPseudocost&
+pseudocost)
+    : mipworker(mipworker),
+      mipsolver(mipworker.getMipSolver()),
       lp(nullptr),
-      localdom(mipsolver.mipdata_->domain),
+      localdom(mipworker.getMipSolver().mipdata_->domain),
+
+// HighsSearch::HighsSearch(const HighsMipSolver& mipsolver,
+//                          HighsPseudocost& pseudocost)
+//     : mipsolver(mipsolver),
+      // lp(nullptr),
+      // localdom(mipsolver.mipdata_->domain),
       pseudocost(pseudocost) {
   nnodes = 0;
   treeweight = 0.0;

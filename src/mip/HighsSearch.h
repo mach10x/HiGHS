@@ -20,7 +20,7 @@
 // Remove for now because HighsSearch is a member of HighsMipSolver.
 // Circular include?
 
-// #include "mip/HighsMipWorker.h"
+#include "mip/HighsMipWorker.h"
 #include "mip/HighsNodeQueue.h"
 #include "mip/HighsPseudocost.h"
 #include "mip/HighsSeparation.h"
@@ -28,17 +28,18 @@
 #include "util/HighsHash.h"
 
 class HighsMipSolver;
+class HighsMipWorker;
 class HighsImplications;
 class HighsCliqueTable;
 
 class HighsSearch {
   // Make reference constant.
-  const HighsMipSolver& mipsolver;
+  // const HighsMipSolver& mipsolver;
 
   // replace HighsMipSolver with HighsMipWorker
-  // HighsMipWorker& mipworker;
+  HighsMipWorker& mipworker;
   // points to mipworker.getMipSolver() for minimal changes.
-  // const HighsMipSolver& mipsolver;
+  const HighsMipSolver& mipsolver;
 
   HighsLpRelaxation* lp;
   HighsDomain localdom;
@@ -157,9 +158,9 @@ class HighsSearch {
   bool orbitsValidInChildNode(const HighsDomainChange& branchChg) const;
 
  public:
-  HighsSearch(const HighsMipSolver& mipsolver, HighsPseudocost& pseudocost);
+  // HighsSearch(const HighsMipSolver& mipsolver, HighsPseudocost& pseudocost);
 
-  // HighsSearch(HighsMipWorker& mipworker, HighsPseudocost& pseudocost);
+  HighsSearch(HighsMipWorker& mipworker, HighsPseudocost& pseudocost);
 
   const HighsMipSolver* getMipSolver() { return &mipsolver; }
 

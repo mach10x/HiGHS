@@ -23,6 +23,7 @@
 #include "mip/HighsPrimalHeuristics.h"
 #include "mip/HighsPseudocost.h"
 #include "mip/HighsRedcostFixing.h"
+#include "mip/HighsMipWorker.h"
 #include "mip/HighsSearch.h"
 #include "mip/HighsSeparation.h"
 #include "parallel/HighsParallel.h"

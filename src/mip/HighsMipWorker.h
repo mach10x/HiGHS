@@ -16,16 +16,18 @@
 #include "mip/HighsImplications.h"
 #include "mip/HighsLpRelaxation.h"
 #include "mip/HighsMipSolver.h"
-#include "mip/HighsSearch.h"
 
 // #include "mip/HighsNodeQueue.h"
-// #include "mip/HighsPseudocost.h"
+#include "mip/HighsPseudocost.h"
 // #include "mip/HighsSeparation.h"
 // #include "presolve/HighsSymmetry.h"
 // #include "util/HighsHash.h"
 
+class HighsSearch;
+
 class HighsMipWorker {
   const HighsMipSolver& mipsolver_;
+
   HighsLpRelaxation lprelaxation_;
   HighsCutPool cutpool_;
   HighsConflictPool conflictpool_;
@@ -37,7 +39,7 @@ class HighsMipWorker {
   // Not sure if this should be here or in HighsSearch.
   HighsPseudocost pseudocost_;
 
-  HighsSearch search_;
+  std::unique_ptr<HighsSearch> search_ptr_;
 
  public:
   HighsMipWorker(const HighsMipSolver& mipsolver__);

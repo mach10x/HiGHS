@@ -16,6 +16,7 @@
 #include "mip/HighsCutPool.h"
 #include "mip/HighsDomain.h"
 #include "mip/HighsMipSolver.h"
+#include "mip/HighsMipWorker.h"
 #include "mip/HighsMipSolverData.h"
 #include "parallel/HighsCombinable.h"
 #include "parallel/HighsParallel.h"
