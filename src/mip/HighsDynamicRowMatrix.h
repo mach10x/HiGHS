@@ -15,6 +15,11 @@
 #include "util/HighsInt.h"
 
 class HighsDynamicRowMatrix {
+ public: 
+
+  std::vector<HighsInt> AheadPos_;
+  std::vector<HighsInt> AheadNeg_;
+
  private:
   /// vector of index ranges in the index and value arrays of AR for each row
   std::vector<std::pair<HighsInt, HighsInt>> ARrange_;
@@ -32,8 +37,8 @@ class HighsDynamicRowMatrix {
 
   /// vector of pointers to the head/tail of the nonzero block list for each
   /// column
-  std::vector<HighsInt> AheadPos_;
-  std::vector<HighsInt> AheadNeg_;
+  // std::vector<HighsInt> AheadPos_;
+  // std::vector<HighsInt> AheadNeg_;
 
   std::vector<uint8_t> colsLinked;
 

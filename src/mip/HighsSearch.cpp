@@ -204,9 +204,9 @@ void HighsSearch::addBoundExceedingConflict() {
                              rhs)) {
       if (mipsolver.mipdata_->domain.infeasible()) return;
       localdom.conflictAnalysis(inds.data(), vals.data(), inds.size(), rhs,
-                                mipsolver.mipdata_->conflictPool);
+                                mipworker.conflictpool_);
 
-      HighsCutGeneration cutGen(*lp, mipsolver.mipdata_->cutpool);
+      HighsCutGeneration cutGen(*lp, mipworker.cutpool_);
       mipsolver.mipdata_->debugSolution.checkCut(inds.data(), vals.data(),
                                                  inds.size(), rhs);
       cutGen.generateConflict(localdom, inds, vals, rhs);
@@ -234,9 +234,9 @@ void HighsSearch::addInfeasibleConflict() {
     //}
     // HighsInt oldnumcuts = cutpool.getNumCuts();
     localdom.conflictAnalysis(inds.data(), vals.data(), inds.size(), rhs,
-                              mipsolver.mipdata_->conflictPool);
+                              mipworker.conflictpool_);
 
-    HighsCutGeneration cutGen(*lp, mipsolver.mipdata_->cutpool);
+    HighsCutGeneration cutGen(*lp, mipworker.cutpool_);
     mipsolver.mipdata_->debugSolution.checkCut(inds.data(), vals.data(),
                                                inds.size(), rhs);
     cutGen.generateConflict(localdom, inds, vals, rhs);
@@ -446,14 +446,14 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
             localdom.changeBound(HighsBoundType::kUpper, fracints[k].first,
                                  otherdownval);
             if (localdom.infeasible()) {
-              localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+              localdom.conflictAnalysis(mipworker.conflictpool_);
               localdom.backtrack();
               localdom.clearChangedCols(numChangedCols);
               continue;
             }
             localdom.propagate();
             if (localdom.infeasible()) {
-              localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+              localdom.conflictAnalysis(mipworker.conflictpool_);
               localdom.backtrack();
               localdom.clearChangedCols(numChangedCols);
               continue;
@@ -498,14 +498,14 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
                                  otherupval);
 
             if (localdom.infeasible()) {
-              localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+              localdom.conflictAnalysis(mipworker.conflictpool_);
               localdom.backtrack();
               localdom.clearChangedCols(numChangedCols);
               continue;
             }
             localdom.propagate();
             if (localdom.infeasible()) {
-              localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+              localdom.conflictAnalysis(mipworker.conflictpool_);
               localdom.backtrack();
               localdom.clearChangedCols(numChangedCols);
               continue;
@@ -573,7 +573,7 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
 
       inferences += localdom.getDomainChangeStack().size();
       if (localdom.infeasible()) {
-        localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+        localdom.conflictAnalysis(mipworker.conflictpool_);
         pseudocost.addCutoffObservation(col, false);
         localdom.backtrack();
         localdom.clearChangedCols();
@@ -705,7 +705,7 @@ HighsInt HighsSearch::selectBranchingCandidate(int64_t maxSbIters,
 
       inferences += localdom.getDomainChangeStack().size();
       if (localdom.infeasible()) {
-        localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+        localdom.conflictAnalysis(mipworker.conflictpool_);
         pseudocost.addCutoffObservation(col, true);
         localdom.backtrack();
         localdom.clearChangedCols();
@@ -836,7 +836,7 @@ void HighsSearch::currentNodeToQueue(HighsNodeQueue& nodequeue) {
     localdom.propagate();
     localdom.clearChangedCols(oldchangedcols);
     prune = localdom.infeasible();
-    if (prune) localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+    if (prune) localdom.conflictAnalysis(mipworker.conflictpool_);
   }
   if (!prune) {
     std::vector<HighsInt> branchPositions;
@@ -875,7 +875,7 @@ void HighsSearch::openNodesToQueue(HighsNodeQueue& nodequeue) {
       localdom.propagate();
       localdom.clearChangedCols(oldchangedcols);
       prune = localdom.infeasible();
-      if (prune) localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+      if (prune) localdom.conflictAnalysis(mipworker.conflictpool_);
     }
     if (!prune) {
       std::vector<HighsInt> branchPositions;
@@ -1046,7 +1046,7 @@ HighsSearch::NodeResult HighsSearch::evaluateNode(
                                       upbranch);
     }
 
-    localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+    localdom.conflictAnalysis(mipworker.conflictpool_);
   } else {
     lp->flushDomain(localdom);
     lp->setObjectiveLimit(mipsolver.mipdata_->upper_limit);
@@ -1079,7 +1079,7 @@ HighsSearch::NodeResult HighsSearch::evaluateNode(
                                         upbranch);
       }
 
-      localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+      localdom.conflictAnalysis(mipworker.conflictpool_);
     } else if (lp->scaledOptimal(status)) {
       lp->storeBasis();
       lp->performAging();
@@ -1146,7 +1146,7 @@ HighsSearch::NodeResult HighsSearch::evaluateNode(
                     parent->branchingdecision.column, upbranch);
               }
 
-              localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+              localdom.conflictAnalysis(mipworker.conflictpool_);
             } else if (!localdom.getChangedCols().empty()) {
               if (analysis_.analyse_mip_time)
                 assert(analysis_.mipTimerRunning(kMipClockEvaluateNodeInner));
@@ -1172,7 +1172,7 @@ HighsSearch::NodeResult HighsSearch::evaluateNode(
                       parent->branchingdecision.column, upbranch);
                 }
 
-                localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+                localdom.conflictAnalysis(mipworker.conflictpool_);
               } else if (!localdom.getChangedCols().empty()) {
                 const HighsSearch::NodeResult evaluate_node_result =
                     evaluateNode(recursion_level + 1);
@@ -1721,7 +1721,7 @@ bool HighsSearch::backtrack(bool recoverBasis) {
     if (!prune) {
       localdom.propagate();
       prune = localdom.infeasible();
-      if (prune) localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+      if (prune) localdom.conflictAnalysis(mipworker.conflictpool_);
     }
     if (!prune) {
       mipsolver.mipdata_->symmetries.propagateOrbitopes(localdom);
@@ -1851,7 +1851,7 @@ bool HighsSearch::backtrackPlunge(HighsNodeQueue& nodequeue) {
     if (!prune) {
       localdom.propagate();
       prune = localdom.infeasible();
-      if (prune) localdom.conflictAnalysis(mipsolver.mipdata_->conflictPool);
+      if (prune) localdom.conflictAnalysis(mipworker.conflictpool_);
     }
     if (!prune) {
       mipsolver.mipdata_->symmetries.propagateOrbitopes(localdom);
@@ -2014,7 +2014,7 @@ void HighsSearch::dive(const HighsInt search_id) {
     }
   }
   analysis_.mipTimerStart(kMipClockPerformAging1);
-  mipsolver.mipdata_->conflictPool.performAging();
+  mipworker.conflictpool_.performAging();
   analysis_.mipTimerStop(kMipClockPerformAging1);
 
   // set iteration limit for each lp solve during the dive to 10 times the
@@ -2131,10 +2131,10 @@ void HighsSearch::dive(const HighsInt search_id) {
 
     assert(this->hasNode());
 
-    if (mipsolver.mipdata_->conflictPool.getNumConflicts() >
+    if (mipworker.conflictpool_.getNumConflicts() >
         options_mip_->mip_pool_soft_limit) {
       analysis_.mipTimerStart(kMipClockPerformAging2);
-      mipsolver.mipdata_->conflictPool.performAging();
+      mipworker.conflictpool_.performAging();
       analysis_.mipTimerStop(kMipClockPerformAging2);
     }
 

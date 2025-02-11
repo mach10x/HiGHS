@@ -80,6 +80,9 @@ HighsDomain::HighsDomain(HighsMipSolver& mipsolver) : mipsolver(&mipsolver) {
 void HighsDomain::addCutpool(HighsCutPool& cutpool) {
   HighsInt cutpoolindex = cutpoolpropagation.size();
   cutpoolpropagation.emplace_back(cutpoolindex, this, cutpool);
+
+  // std::cout << cutpoolpropagation[cutpoolindex].cutpool->matrix_.AheadNeg_.size() << std::endl;
+   // assign(cutpool->matrix_.numCol)
 }
 
 void HighsDomain::addConflictPool(HighsConflictPool& conflictPool) {
@@ -474,6 +477,9 @@ void HighsDomain::CutpoolPropagation::updateActivityLbChange(HighsInt col,
           return true;
         });
   }
+
+  // std::cout << "Update activity LB change" << cutpool->getMatrix().AheadNeg_[2] << std::endl;
+  // std::cout << "Update activity LB change" << cutpool->getMatrix().AheadNeg_[17] << std::endl;
 
   cutpool->getMatrix().forEachPositiveColumnEntry(
       col, [&](HighsInt row, double val) {
@@ -1990,6 +1996,22 @@ void HighsDomain::changeBound(HighsDomainChange boundchg, Reason reason) {
 
   bool binary = isBinary(boundchg.column);
 
+  // std::cout << "FROM highs domain" << cutpoolpropagation[0].cutpool->matrix_.AheadNeg_[10] << std::endl;
+  if (cutpoolpropagation.size() > 1) {
+    // segfaults
+    // std::cout << "FROM highs domain" << cutpoolpropagation[1].cutpool->matrix_.AheadNeg_[10] << std::endl;
+    for (int index = 1; index < cutpoolpropagation.size() ; index++) {
+      if (cutpoolpropagation[1].cutpool->matrix_.AheadNeg_.size() == 0) {
+        cutpoolpropagation[1].cutpool->matrix_.AheadNeg_.assign(colLowerPos_.size(), -1);
+        std::cout << "New Size index " << index << " " << cutpoolpropagation[1].cutpool->matrix_.AheadNeg_.size() << std::endl;
+      }
+      if (cutpoolpropagation[1].cutpool->matrix_.AheadPos_.size() == 0) {
+        cutpoolpropagation[1].cutpool->matrix_.AheadPos_.assign(colLowerPos_.size(), -1);
+        std::cout << "New Size index " << index << " " << cutpoolpropagation[1].cutpool->matrix_.AheadNeg_.size() << std::endl;
+      }
+    }
+  }
+
   double oldbound = doChangeBound(boundchg);
 
   prevboundval_.emplace_back(oldbound, prevPos);
@@ -2055,7 +2077,9 @@ void HighsDomain::setDomainChangeStack(
   branchPos_.clear();
   HighsInt stacksize = domchgstack.size();
   HighsInt k = 0;
+  // std::cout << "size = " << branchingPositions.size() << std::endl;
   for (HighsInt branchPos : branchingPositions) {
+    // std::cout << branchPos << std::endl;
     for (; k < branchPos; ++k) {
       if (domchgstack[k].boundtype == HighsBoundType::kLower &&
           domchgstack[k].boundval <= col_lower_[domchgstack[k].column])

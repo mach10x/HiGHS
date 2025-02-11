@@ -586,7 +586,8 @@ restart:
     }  // if (!submip && mipdata_->num_nodes >= nextCheck))
 
     // Now perform the node search
-    const bool allow_multiple_node_search = false;
+    // const bool allow_multiple_node_search = false;
+    const bool allow_multiple_node_search = true;
     for (HighsInt iSearch = 0; iSearch < mip_search_concurrency; iSearch++) {
       if (iSearch > 0 && !allow_multiple_node_search) continue;
       HighsSearch& search = *concurrent_searches[iSearch];
@@ -620,6 +621,12 @@ restart:
           if (nextNode.lower_bound == bestBoundNodeLb &&
               (HighsInt)nextNode.domchgstack.size() == bestBoundNodeStackSize)
             lastLbLeave = numQueueLeaves;
+
+          // std::cout << mipworkers[0].cutpool_.matrix_.AheadNeg_[2] << std::endl;
+          // const HighsDomain& localdom = mipworkers[0].getSearch().getLocalDomain();
+          // int number = localdom.cutpoolpropagation[0].cutpool->matrix_.AheadNeg_[2];
+          // std::cout << number << std::endl;
+
           search.installNode(std::move(nextNode));
         }
 

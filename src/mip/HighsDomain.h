@@ -304,8 +304,9 @@ class HighsDomain {
 
   HighsMipSolver* mipsolver;
 
- private:
+ public: 
   std::deque<CutpoolPropagation> cutpoolpropagation;
+ private:
   std::deque<ConflictPoolPropagation> conflictPoolPropagation;
 
   bool infeasible_ = 0;

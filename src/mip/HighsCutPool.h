@@ -49,8 +49,11 @@ struct HighsCutSet {
 };
 
 class HighsCutPool {
- private:
+ public:
   HighsDynamicRowMatrix matrix_;
+
+ private:
+  // HighsDynamicRowMatrix matrix_;
   std::vector<double> rhs_;
   std::vector<int16_t> ages_;
   std::vector<double> rownormalization_;
