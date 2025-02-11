@@ -330,7 +330,12 @@ restart:
 
       concurrent_searches.push_back(&(mipworkers[iSearch].getSearch()));
     }
-
+    for (HighsInt iSearch = 0; iSearch < mip_search_concurrency; iSearch++) {
+      printf("Search %d has LP relaxation with address %p, %d columns, and %d rows\n",
+	     int(iSearch), (void*)&concurrent_searches[iSearch]->mipworker.lprelaxation_,
+	     int(concurrent_searches[iSearch]->mipworker.lprelaxation_.getLpSolver().getNumCol()),
+	     int(concurrent_searches[iSearch]->mipworker.lprelaxation_.getLpSolver().getNumRow()));
+    }
     // assert(worker_mipsolvers.size() == num_worker);
     assert(mipworkers.size() == num_worker);
 

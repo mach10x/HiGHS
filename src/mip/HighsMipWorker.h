@@ -27,6 +27,7 @@ class HighsSearch;
 
 class HighsMipWorker {
   const HighsMipSolver& mipsolver_;
+public: // Temporary so HighsMipWorker can be explored in other classes
 
   HighsLpRelaxation lprelaxation_;
   HighsCliqueTable cliquetable_;

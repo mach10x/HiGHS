@@ -37,6 +37,7 @@ class HighsSearch {
   // const HighsMipSolver& mipsolver;
 
   // replace HighsMipSolver with HighsMipWorker
+public: // Temporary so HighsSearch can be explored in other classes
   HighsMipWorker& mipworker;
   // points to mipworker.getMipSolver() for minimal changes.
   const HighsMipSolver& mipsolver;
