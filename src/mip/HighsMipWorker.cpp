@@ -37,7 +37,10 @@ HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__, const HighsLpR
   // Register cutpool and conflict pool in local search domain.
 
   // search_ptr_= std::unique_ptr<HighsSearch>(new HighsSearch(mipsolver_, pseudocost_));
+
   search_ptr_= std::unique_ptr<HighsSearch>(new HighsSearch(*this, pseudocost_));
+  // search_ptr_shared_ = std::shared_ptr<HighsSearch>(new HighsSearch(*this, pseudocost_));
+  // search_ptr = new HighsSearch(*this, pseudocost_);
 
   // add global cutpool 
   // search_ptr_->getLocalDomain().addCutpool(mipsolver__.mipdata_->cutpool);
@@ -52,14 +55,48 @@ HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__, const HighsLpR
   // add local cutpool 
   search_ptr_->getLocalDomain().addCutpool(cutpool_);
   search_ptr_->getLocalDomain().addConflictPool(conflictpool_);
-
   search_ptr_->setLpRelaxation(&lprelaxation_);
+
+  // search_ptr_shared_->getLocalDomain().addCutpool(cutpool_);
+  // search_ptr_shared_->getLocalDomain().addConflictPool(conflictpool_);
+  // search_ptr_shared_->setLpRelaxation(&lprelaxation_);
+
+  // search_ptr->getLocalDomain().addCutpool(cutpool_);
+  // search_ptr->getLocalDomain().addConflictPool(conflictpool_);
+  // search_ptr->setLpRelaxation(&lprelaxation_);
+
+
+      printf("lprelaxation_ address in constructor of mipworker %p, %d columns, and %d rows\n",
+	     (void*)&lprelaxation_,
+	     int(lprelaxation_.getLpSolver().getNumCol()),
+	     int(lprelaxation_.getLpSolver().getNumRow()));
+
+      printf("Search has lp member in constructor of mipworker with address %p, %d columns, and %d rows\n",
+	     (void*)&search_ptr_->lp,
+	     int(search_ptr_->lp->getLpSolver().getNumCol()),
+	     int(search_ptr_->lp->getLpSolver().getNumRow()));
+
+      // printf("Search has lp member in constructor of mipworker with address %p, %d columns, and %d rows\n",
+	    //  (void*)&search_ptr_shared_->lp,
+	    //  int(search_ptr_shared_->lp->getLpSolver().getNumCol()),
+	    //  int(search_ptr_shared_->lp->getLpSolver().getNumRow()));
+
+      // printf("Search has lp member in constructor of mipworker with address %p, %d columns, and %d rows\n",
+	    //  (void*)search_ptr->lp,
+	    //  int(search_ptr->lp->getLpSolver().getNumCol()),
+	    //  int(search_ptr->lp->getLpSolver().getNumRow()));
 
   // Initialize mipdata_.
   // mipdata_ = decltype(mipdata_)(new HighsMipSolverData(mipsolver__));
   // mipdata_->init();
 }
 
+//  HighsMipWorker::~HighsMipWorker() {
+//     delete search_ptr;
+//   };
+
 const HighsMipSolver& HighsMipWorker::getMipSolver() { return mipsolver_; }
 
 HighsSearch& HighsMipWorker::getSearch() { return *search_ptr_; }
+// HighsSearch& HighsMipWorker::getSearch() { return (*search_ptr); }
+// HighsSearch& HighsMipWorker::getSearch() { return (*search_ptr_shared_); }

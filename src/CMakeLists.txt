@@ -266,7 +266,7 @@ else()
   if (UNIX)
     target_compile_options(highs PRIVATE "-Wno-unused-variable")
     target_compile_options(highs PRIVATE "-Wno-unused-const-variable")
-    # target_compile_options(highs PRIVATE "-O0")
+    target_compile_options(highs PRIVATE "-O0")
   endif()
 
   # Configure the config file for the build tree:

@@ -244,7 +244,7 @@ restart:
   HighsSeparation sepa(*this);
 
   // now done in HighsMipWorker constructor.
-  // master_search.setLpRelaxation(&mipdata_->lp);
+  master_search.setLpRelaxation(&mipdata_->lp);
   sepa.setLpRelaxation(&mipdata_->lp);
 
   double prev_lower_bound = mipdata_->lower_bound;
@@ -295,6 +295,7 @@ restart:
     // std::vector<HighsLpRelaxation> worker_lps;
 
     std::vector<HighsSearch*> concurrent_searches;
+    // std::vector<std::shared_ptr> concurrent_searches_shared;
 
     concurrent_searches.push_back(&master_search);
 
@@ -328,7 +329,9 @@ restart:
       // worker_mipsolver.mipdata_->pseudocost});
       // worker_lps.push_back(HighsLpRelaxation{mipdata_->lp});
       // worker_searches[iSearch].setLpRelaxation(&worker_lps[iSearch]);
+     
 
+      // concurrent_searches.push_back(&(mipworkers[iSearch].getSearch()));
       concurrent_searches.push_back(&(mipworkers[iSearch].getSearch()));
     }
     for (HighsInt iSearch = 0; iSearch < mip_search_concurrency; iSearch++) {
@@ -336,6 +339,12 @@ restart:
 	     int(iSearch), (void*)&concurrent_searches[iSearch]->mipworker.lprelaxation_,
 	     int(concurrent_searches[iSearch]->mipworker.lprelaxation_.getLpSolver().getNumCol()),
 	     int(concurrent_searches[iSearch]->mipworker.lprelaxation_.getLpSolver().getNumRow()));
+
+      printf("Search %d has lp member with address %p, %d columns, and %d rows\n",
+	     int(iSearch), (void*)&concurrent_searches[iSearch]->lp,
+	     int(concurrent_searches[iSearch]->lp->getLpSolver().getNumCol()),
+	     int(concurrent_searches[iSearch]->lp->getLpSolver().getNumRow()));
+
     }
     // assert(worker_mipsolvers.size() == num_worker);
     assert(mipworkers.size() == num_worker);

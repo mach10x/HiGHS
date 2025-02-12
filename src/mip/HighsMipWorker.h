@@ -38,11 +38,19 @@ public: // Temporary so HighsMipWorker can be explored in other classes
   HighsPseudocost pseudocost_;
 
   std::unique_ptr<HighsSearch> search_ptr_;
+  // std::shared_ptr<HighsSearch> search_ptr_shared_;
+  // HighsSearch* search_ptr = nullptr;
 
  public:
  
   // HighsMipWorker(const HighsMipSolver& mipsolver__);
   HighsMipWorker(const HighsMipSolver& mipsolver__, const HighsLpRelaxation& lprelax_);
+
+  // ~HighsMipWorker();
+
+  // ~HighsMipWorker() {
+  //   delete search_ptr;
+  // };
 
   const HighsMipSolver& getMipSolver();
 

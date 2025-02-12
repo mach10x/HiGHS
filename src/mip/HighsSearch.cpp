@@ -2032,7 +2032,14 @@ void HighsSearch::dive(const HighsInt search_id) {
 
   // perform the dive and put the open nodes to the queue
   size_t plungestart = mipsolver.mipdata_->num_nodes;
-  bool considerHeuristics = true;
+
+  // bool considerHeuristics = true;
+  bool considerHeuristics = false;
+
+  // bool considerHeuristics = false;
+  // if (search_id == 0)
+  //   considerHeuristics = true;
+
   analysis_.mipTimerStart(kMipClockDive);
   while (true) {
     // Possibly apply primal heuristics
