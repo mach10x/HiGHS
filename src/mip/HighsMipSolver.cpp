@@ -237,13 +237,14 @@ restart:
   const HighsInt mip_search_concurrency = options_mip_->mip_search_concurrency;
   const HighsInt num_worker = mip_search_concurrency - 1;
 
-  HighsMipWorker master_worker(*this);
+  HighsMipWorker master_worker(*this, mipdata_->lp);
   HighsSearch master_search{master_worker, mipdata_->pseudocost};
 
   mipdata_->debugSolution.registerDomain(master_search.getLocalDomain());
   HighsSeparation sepa(*this);
 
-  master_search.setLpRelaxation(&mipdata_->lp);
+  // now done in HighsMipWorker constructor.
+  // master_search.setLpRelaxation(&mipdata_->lp);
   sepa.setLpRelaxation(&mipdata_->lp);
 
   double prev_lower_bound = mipdata_->lower_bound;
@@ -299,7 +300,7 @@ restart:
 
     for (HighsInt iSearch = 0; iSearch < num_worker; iSearch++) {
       // worker_mipsolvers.push_back(HighsMipSolver{*this});
-      mipworkers.push_back(HighsMipWorker(*this));
+      mipworkers.push_back(HighsMipWorker(*this, mipdata_->lp));
 
       //    worker_mipsolvers.push_back(HighsMipSolver{callback_,
       //    options_mip_, model_});

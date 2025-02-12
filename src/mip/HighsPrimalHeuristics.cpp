@@ -317,7 +317,7 @@ void HighsPrimalHeuristics::rootReducedCost() {
 void HighsPrimalHeuristics::RENS(const std::vector<double>& tmp) {
   HighsPseudocost pscost(mipsolver.mipdata_->pseudocost);
 
-  HighsMipWorker dummy_master_worker(mipsolver);
+  HighsMipWorker dummy_master_worker(mipsolver, mipsolver.mipdata_->lp);
   HighsSearch heur(dummy_master_worker, pscost);
 
   // HighsSearch heur(mipsolver, pscost);
@@ -577,7 +577,8 @@ void HighsPrimalHeuristics::RINS(const std::vector<double>& relaxationsol) {
 
   HighsPseudocost pscost(mipsolver.mipdata_->pseudocost);
 
-  HighsMipWorker dummy_master_worker(mipsolver);
+  // HighsMipWorker dummy_master_worker(mipsolver);
+  HighsMipWorker dummy_master_worker(mipsolver, mipsolver.mipdata_->lp);
   HighsSearch heur(dummy_master_worker, pscost);
 
   // HighsSearch heur(mipsolver, pscost);

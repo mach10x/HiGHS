@@ -40,7 +40,9 @@ public: // Temporary so HighsMipWorker can be explored in other classes
   std::unique_ptr<HighsSearch> search_ptr_;
 
  public:
-  HighsMipWorker(const HighsMipSolver& mipsolver__);
+ 
+  // HighsMipWorker(const HighsMipSolver& mipsolver__);
+  HighsMipWorker(const HighsMipSolver& mipsolver__, const HighsLpRelaxation& lprelax_);
 
   const HighsMipSolver& getMipSolver();
 

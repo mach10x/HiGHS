@@ -10,10 +10,13 @@
 #include "mip/HighsSearch.h"
 #include "mip/HighsMipSolverData.h"
 
-HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__)
+HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__, const HighsLpRelaxation& lprelax_)
     : mipsolver_(mipsolver__),
       // mipsolver_worker_(mipsolver__),
-      lprelaxation_(mipsolver__),
+      // lprelaxation_(mipsolver__),
+      // lprelaxation_(mipsolver__) required setLpRelaxation to be called after, but here
+      // we use the local relaxation so we can initialize it in the constructor
+      lprelaxation_(lprelax_),
       cutpool_(mipsolver__.numCol(),
                mipsolver__.options_mip_->mip_pool_age_limit,
                mipsolver__.options_mip_->mip_pool_soft_limit),
