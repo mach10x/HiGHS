@@ -2019,8 +2019,6 @@ void HighsSearch::dive(const HighsInt search_id) {
 
   // set iteration limit for each lp solve during the dive to 10 times the
   // average nodes
-  printf("HighsSearch::dive(%d): Address of mipsolver.mipdata_->lp is %p\n",
-         int(search_id), (void*)&mipsolver.mipdata_->lp);
   HighsInt iterlimit = 10 * std::max(mipsolver.mipdata_->lp.getAvgSolveIters(),
                                      mipsolver.mipdata_->avgrootlpiters);
   iterlimit =
