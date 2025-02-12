@@ -28,7 +28,6 @@ class HighsSearch;
 class HighsMipWorker {
   const HighsMipSolver& mipsolver_;
 
-  HighsLpRelaxation lprelaxation_;
   HighsCliqueTable cliquetable_;
 
   // Not sure if this should be here or elsewhere.
@@ -45,6 +44,8 @@ class HighsMipWorker {
   const HighsMipSolver& getMipSolver();
 
   HighsSearch& getSearch();
+
+  HighsLpRelaxation lprelaxation_;
 
   HighsCutPool cutpool_;
   HighsConflictPool conflictpool_;

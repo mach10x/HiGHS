@@ -50,6 +50,8 @@ HighsMipWorker::HighsMipWorker(const HighsMipSolver& mipsolver__)
   search_ptr_->getLocalDomain().addCutpool(cutpool_);
   search_ptr_->getLocalDomain().addConflictPool(conflictpool_);
 
+  search_ptr_->setLpRelaxation(&lprelaxation_);
+
   // Initialize mipdata_.
   // mipdata_ = decltype(mipdata_)(new HighsMipSolverData(mipsolver__));
   // mipdata_->init();
