@@ -341,6 +341,7 @@ struct HighsOptionsStruct {
   HighsInt ipm_iteration_limit;
 
   // Options for PDLP solver
+  HighsInt pdlp_implementation;
   HighsInt pdlp_features_off;
   bool pdlp_native_termination;
   HighsInt pdlp_iteration_limit;
@@ -489,6 +490,7 @@ struct HighsOptionsStruct {
         log_to_console(false),
         timeless_log(false),
         ipm_iteration_limit(0),
+        pdlp_implementation(0),
         pdlp_features_off(0),
         pdlp_native_termination(false),
         pdlp_iteration_limit(0),
@@ -1091,6 +1093,12 @@ class HighsOptions : public HighsOptionsStruct {
     record_int = new OptionRecordInt(
         "ipm_iteration_limit", "Iteration limit for IPM solver", advanced,
         &ipm_iteration_limit, 0, kHighsIInf, kHighsIInf);
+    records.push_back(record_int);
+
+    record_int = new OptionRecordInt(
+        "pdlp_implementation",
+        "PDLP implementation: 0 => cuPDLP-C 1 => Raphael (default)", advanced,
+        &pdlp_implementation, 0, 1, 1);
     records.push_back(record_int);
 
     record_int = new OptionRecordInt(

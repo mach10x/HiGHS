@@ -12,6 +12,7 @@
 #include "ipm/IpxWrapper.h"
 #include "lp_data/HighsSolutionDebug.h"
 #include "pdlp/CupdlpWrapper.h"
+#include "pdlp/raphael/Solver.h"
 #include "simplex/HApp.h"
 
 // The method below runs simplex, ipx or pdlp solver on the lp.
@@ -57,16 +58,28 @@ HighsStatus solveLp(HighsLpSolverObject& solver_object, const string message) {
       return_status = interpretCallStatus(options.log_options, call_status,
                                           return_status, "solveLpIpx");
     } else {
-      // Use cuPDLP-C to solve the LP
-      try {
-        call_status = solveLpCupdlp(solver_object);
-      } catch (const std::exception& exception) {
-        highsLogDev(options.log_options, HighsLogType::kError,
-                    "Exception %s in solveLpCupdlp\n", exception.what());
-        call_status = HighsStatus::kError;
+      if (options.pdlp_implementation == 0) {
+        // Use cuPDLP-C to solve the LP
+        try {
+          call_status = solveLpCupdlp(solver_object);
+        } catch (const std::exception& exception) {
+          highsLogDev(options.log_options, HighsLogType::kError,
+                      "Exception %s in solveLpCupdlp\n", exception.what());
+          call_status = HighsStatus::kError;
+        }
+        return_status = interpretCallStatus(options.log_options, call_status,
+                                            return_status, "solveLpCupdlp");
+      } else {
+        try {
+          call_status = solveLpRaphael(solver_object);
+        } catch (const std::exception& exception) {
+          highsLogDev(options.log_options, HighsLogType::kError,
+                      "Exception %s in solveLpRaphael\n", exception.what());
+          call_status = HighsStatus::kError;
+        }
+        return_status = interpretCallStatus(options.log_options, call_status,
+                                            return_status, "solveLpCupdlp");
       }
-      return_status = interpretCallStatus(options.log_options, call_status,
-                                          return_status, "solveLpCupdlp");
     }
     if (return_status == HighsStatus::kError) return return_status;
     // IPM (and PDLP?) can claim optimality with large primal and/or

@@ -29,6 +29,7 @@ cc_library(
         "src/parallel/*.cpp",
         "src/pdlp/*.cpp",
         "src/pdlp/cupdlp/*.c",
+        "src/pdlp/raphael/*.cpp",
         "src/presolve/*.cpp",
         "src/qpsolver/*.cpp",
         "src/simplex/*.cpp",

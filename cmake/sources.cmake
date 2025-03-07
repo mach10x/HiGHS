@@ -15,6 +15,7 @@ set(include_dirs
   ${CMAKE_SOURCE_DIR}/src/parallel
   ${CMAKE_SOURCE_DIR}/src/pdlp
   ${CMAKE_SOURCE_DIR}/src/pdlp/cupdlp
+  ${CMAKE_SOURCE_DIR}/src/pdlp/raphael
   ${CMAKE_SOURCE_DIR}/src/presolve
   ${CMAKE_SOURCE_DIR}/src/qpsolver
   ${CMAKE_SOURCE_DIR}/src/simplex
@@ -236,6 +237,7 @@ set(highs_sources
     model/HighsModel.cpp
     parallel/HighsTaskExecutor.cpp
     pdlp/CupdlpWrapper.cpp
+    pdlp/raphael/Solver.cpp
     presolve/HighsPostsolveStack.cpp
     presolve/HighsSymmetry.cpp
     presolve/HPresolve.cpp
@@ -368,6 +370,7 @@ set(highs_headers
     parallel/HighsTask.h
     parallel/HighsTaskExecutor.h
     pdlp/CupdlpWrapper.h
+    pdlp/raphael/Solver.h
     presolve/HighsPostsolveStack.h
     presolve/HighsSymmetry.h
     presolve/HPresolve.h

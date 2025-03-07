@@ -15,6 +15,7 @@ set(include_dirs_python
     ${CMAKE_SOURCE_DIR}/src/parallel
     ${CMAKE_SOURCE_DIR}/src/pdlp
     ${CMAKE_SOURCE_DIR}/src/pdlp/cupdlp
+    ${CMAKE_SOURCE_DIR}/src/pdlp/raphael
     ${CMAKE_SOURCE_DIR}/src/presolve
     ${CMAKE_SOURCE_DIR}/src/qpsolver
     ${CMAKE_SOURCE_DIR}/src/simplex
@@ -234,6 +235,7 @@ set(highs_sources_python
     src/model/HighsModel.cpp
     src/parallel/HighsTaskExecutor.cpp
     src/pdlp/CupdlpWrapper.cpp
+    src/pdlp/raphael/Solver.cpp
     src/presolve/HighsPostsolveStack.cpp
     src/presolve/HighsSymmetry.cpp
     src/presolve/HPresolve.cpp
@@ -363,6 +365,7 @@ set(highs_headers_python
     src/parallel/HighsTask.h
     src/parallel/HighsTaskExecutor.h
     src/pdlp/CupdlpWrapper.h
+    src/pdlp/raphael/Solver.h
     src/presolve/HighsPostsolveStack.h
     src/presolve/HighsSymmetry.h
     src/presolve/HPresolve.h
