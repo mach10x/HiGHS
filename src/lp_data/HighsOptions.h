@@ -1107,7 +1107,7 @@ class HighsOptions : public HighsOptionsStruct {
     record_int = new OptionRecordInt(
         "pdlp_implementation",
         "PDLP implementation: 0 => cuPDLP-C 1 => Raphael (default)", advanced,
-        &pdlp_implementation, 0, 1, 1);
+        &pdlp_implementation, 0, 0, 1);
     records.push_back(record_int);
 
     record_int = new OptionRecordInt(
