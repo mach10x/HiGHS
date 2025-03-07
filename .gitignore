@@ -294,3 +294,5 @@ build-cpu
 
 # Generated HiGHS options file
 Options.md
+
+build-latest
