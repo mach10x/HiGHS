@@ -267,6 +267,8 @@ const HighsInt kKeepNRowsKeepRows = 1;
 
 // Strings for command line options
 const string kModelFileString = "model_file";
+const string kReadBasisFile = "read_basis_file";
+const string kWriteBasisFile = "write_basis_file";
 const string kPresolveString = "presolve";
 const string kSolverString = "solver";
 const string kParallelString = "parallel";
@@ -440,6 +442,7 @@ struct HighsOptionsStruct {
   bool mip_improving_solution_report_sparse;
   std::string mip_improving_solution_file;
   bool mip_root_presolve_only;
+  HighsInt mip_lifting_for_probing;
 
   // Logging callback identifiers
   HighsLogOptions log_options;
@@ -579,7 +582,8 @@ struct HighsOptionsStruct {
         mip_improving_solution_report_sparse(false),
         // clang-format off
         mip_improving_solution_file(""),
-        mip_root_presolve_only(false) {};
+        mip_root_presolve_only(false),
+        mip_lifting_for_probing(-1) {};
   // clang-format on
 };
 
@@ -773,7 +777,8 @@ class HighsOptions : public HighsOptionsStruct {
 
     record_int = new OptionRecordInt(
         "highs_analysis_level", "Analysis level in HiGHS", now_advanced,
-        &highs_analysis_level, kHighsAnalysisLevelMin, kHighsAnalysisLevelMin,
+        &highs_analysis_level, kHighsAnalysisLevelMin,
+        kHighsAnalysisLevelMin,  // kHighsAnalysisLevelMipTime,  //
         kHighsAnalysisLevelMax);
     records.push_back(record_int);
 
@@ -1015,6 +1020,11 @@ class HighsOptions : public HighsOptionsStruct {
         "Whether MIP presolve is only applied at the root node", advanced,
         &mip_root_presolve_only, false);
     records.push_back(record_bool);
+
+    record_int = new OptionRecordInt(
+        "mip_lifting_for_probing", "Level of lifting for probing that is used",
+        advanced, &mip_lifting_for_probing, -1, -1, kHighsIInf);
+    records.push_back(record_int);
 
     record_int = new OptionRecordInt(
         "mip_max_leaves", "MIP solver max number of leaf nodes", advanced,

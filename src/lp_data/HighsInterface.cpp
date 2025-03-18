@@ -18,6 +18,100 @@
 #include "util/HighsMatrixUtils.h"
 #include "util/HighsSort.h"
 
+void Highs::reportModelStats() const {
+  const HighsLp& lp = this->model_.lp_;
+  const HighsHessian& hessian = this->model_.hessian_;
+  const HighsLogOptions& log_options = this->options_.log_options;
+  if (!*log_options.output_flag) return;
+  HighsInt num_integer = 0;
+  HighsInt num_binary = 0;
+  HighsInt num_semi_continuous = 0;
+  HighsInt num_semi_integer = 0;
+  for (HighsInt iCol = 0; iCol < static_cast<HighsInt>(lp.integrality_.size());
+       iCol++) {
+    switch (lp.integrality_[iCol]) {
+      case HighsVarType::kInteger:
+        num_integer++;
+        if (lp.col_lower_[iCol] == 0 && lp.col_upper_[iCol] == 1) num_binary++;
+        break;
+      case HighsVarType::kSemiContinuous:
+        num_semi_continuous++;
+        break;
+      case HighsVarType::kSemiInteger:
+        num_semi_integer++;
+        break;
+      default:
+        break;
+    }
+  }
+  std::string problem_type;
+  const bool non_continuous =
+      num_integer + num_semi_continuous + num_semi_integer;
+  if (hessian.dim_) {
+    if (non_continuous) {
+      problem_type = "MIQP";
+    } else {
+      problem_type = "QP  ";
+    }
+  } else {
+    if (non_continuous) {
+      problem_type = "MIP ";
+    } else {
+      problem_type = "LP  ";
+    }
+  }
+  const HighsInt a_num_nz = lp.a_matrix_.numNz();
+  const HighsInt q_num_nz = hessian.dim_ > 0 ? hessian.numNz() : 0;
+  if (*log_options.log_dev_level) {
+    highsLogDev(log_options, HighsLogType::kInfo, "%4s      : %s\n",
+                problem_type.c_str(), lp.model_name_.c_str());
+    highsLogDev(log_options, HighsLogType::kInfo,
+                "Rows      : %" HIGHSINT_FORMAT "\n", lp.num_row_);
+    highsLogDev(log_options, HighsLogType::kInfo,
+                "Cols      : %" HIGHSINT_FORMAT "\n", lp.num_col_);
+    if (q_num_nz) {
+      highsLogDev(log_options, HighsLogType::kInfo,
+                  "Matrix Nz : %" HIGHSINT_FORMAT "\n", a_num_nz);
+      highsLogDev(log_options, HighsLogType::kInfo,
+                  "Hessian Nz: %" HIGHSINT_FORMAT "\n", q_num_nz);
+    } else {
+      highsLogDev(log_options, HighsLogType::kInfo,
+                  "Nonzeros  : %" HIGHSINT_FORMAT "\n", a_num_nz);
+    }
+    if (num_integer)
+      highsLogDev(log_options, HighsLogType::kInfo,
+                  "Integer   : %" HIGHSINT_FORMAT " (%" HIGHSINT_FORMAT
+                  " binary)\n",
+                  num_integer, num_binary);
+    if (num_semi_continuous)
+      highsLogDev(log_options, HighsLogType::kInfo,
+                  "SemiConts : %" HIGHSINT_FORMAT "\n", num_semi_continuous);
+    if (num_semi_integer)
+      highsLogDev(log_options, HighsLogType::kInfo,
+                  "SemiInt   : %" HIGHSINT_FORMAT "\n", num_semi_integer);
+  } else {
+    std::stringstream stats_line;
+    stats_line << problem_type;
+    if (lp.model_name_.length()) stats_line << " " << lp.model_name_;
+    stats_line << " has " << lp.num_row_ << " rows; " << lp.num_col_ << " cols";
+    if (q_num_nz) {
+      stats_line << "; " << a_num_nz << " matrix nonzeros";
+      stats_line << "; " << q_num_nz << " Hessian nonzeros";
+    } else {
+      stats_line << "; " << a_num_nz << " nonzeros";
+    }
+    if (num_integer)
+      stats_line << "; " << num_integer << " integer variables (" << num_binary
+                 << " binary)";
+    if (num_semi_continuous)
+      stats_line << "; " << num_semi_continuous << " semi-continuous variables";
+    if (num_semi_integer)
+      stats_line << "; " << num_semi_integer << " semi-integer variables";
+    highsLogUser(log_options, HighsLogType::kInfo, "%s\n",
+                 stats_line.str().c_str());
+  }
+}
+
 HighsStatus Highs::callFormStandardFormLp() {
   this->clearStandardFormLp();
   // Ensure that the incumbent LP matrix is rowwise on entry
@@ -1308,7 +1402,7 @@ HighsStatus Highs::getDualRayInterface(bool& has_dual_ray,
   if (num_row == 0) return return_status;
   bool has_invert = ekk_instance_.status_.has_invert;
   assert(!lp.is_moved_);
-  has_dual_ray = ekk_instance_.status_.has_dual_ray;
+  has_dual_ray = ekk_instance_.dual_ray_record_.index != kNoRayIndex;
 
   // Declare identifiers to save column costs, integrality, any Hessian and the
   // presolve setting, and a flag to know when they should be
@@ -1344,9 +1438,15 @@ HighsStatus Highs::getDualRayInterface(bool& has_dual_ray,
       // Zero the costs, integrality and Hessian
       std::vector<double> zero_costs;
       zero_costs.assign(lp.num_col_, 0);
+      // Take a copy of the primal ray record, since this will be
+      // cleared by calling changeColsCost
+      HighsRayRecord primal_ray_record =
+          this->ekk_instance_.primal_ray_record_.getRayRecord();
       HighsStatus status =
           this->changeColsCost(0, lp.num_col_ - 1, zero_costs.data());
       assert(status == HighsStatus::kOk);
+      // Reinstate the primal ray record
+      this->ekk_instance_.primal_ray_record_.setRayRecord(primal_ray_record);
       if (is_qp) {
         HighsHessian zero_hessian;
         this->passHessian(zero_hessian);
@@ -1355,31 +1455,31 @@ HighsStatus Highs::getDualRayInterface(bool& has_dual_ray,
       this->setOptionValue("solve_relaxation", true);
       HighsStatus call_status = this->run();
       if (call_status != HighsStatus::kOk) return_status = call_status;
-      has_dual_ray = ekk_instance_.status_.has_dual_ray;
+      has_dual_ray = ekk_instance_.dual_ray_record_.index != kNoRayIndex;
       has_invert = ekk_instance_.status_.has_invert;
       assert(has_invert);
     }
     if (has_dual_ray) {
-      if (ekk_instance_.dual_ray_.size()) {
+      if (ekk_instance_.dual_ray_record_.value.size()) {
         // Dual ray is already computed
         highsLogUser(options_.log_options, HighsLogType::kInfo,
                      "Copying known dual ray\n");
         for (HighsInt iRow = 0; iRow < num_row; iRow++)
-          dual_ray_value[iRow] = ekk_instance_.dual_ray_[iRow];
+          dual_ray_value[iRow] = ekk_instance_.dual_ray_record_.value[iRow];
       } else if (has_invert) {
         // Dual ray is known and can be calculated
         highsLogUser(options_.log_options, HighsLogType::kInfo,
                      "Solving linear system to compute dual ray\n");
         vector<double> rhs;
-        HighsInt iRow = ekk_instance_.info_.dual_ray_row_;
+        HighsInt iRow = ekk_instance_.dual_ray_record_.index;
         rhs.assign(num_row, 0);
-        rhs[iRow] = ekk_instance_.info_.dual_ray_sign_;
+        rhs[iRow] = ekk_instance_.dual_ray_record_.sign;
         HighsInt* dual_ray_num_nz = 0;
         basisSolveInterface(rhs, dual_ray_value, dual_ray_num_nz, NULL, true);
         // Now save the dual ray itself
-        ekk_instance_.dual_ray_.resize(num_row);
+        ekk_instance_.dual_ray_record_.value.resize(num_row);
         for (HighsInt iRow = 0; iRow < num_row; iRow++)
-          ekk_instance_.dual_ray_[iRow] = dual_ray_value[iRow];
+          ekk_instance_.dual_ray_record_.value[iRow] = dual_ray_value[iRow];
       } else {
         assert(!has_invert);
         // Dual ray is known but cannot be calculated
@@ -1439,7 +1539,7 @@ HighsStatus Highs::getPrimalRayInterface(bool& has_primal_ray,
   }
   bool has_invert = ekk_instance_.status_.has_invert;
   assert(!lp.is_moved_);
-  has_primal_ray = ekk_instance_.status_.has_primal_ray;
+  has_primal_ray = ekk_instance_.primal_ray_record_.index != kNoRayIndex;
 
   std::string presolve;
   bool solve_relaxation;
@@ -1472,23 +1572,23 @@ HighsStatus Highs::getPrimalRayInterface(bool& has_primal_ray,
       this->setOptionValue("allow_unbounded_or_infeasible", false);
       HighsStatus call_status = this->run();
       if (call_status != HighsStatus::kOk) return_status = call_status;
-      has_primal_ray = ekk_instance_.status_.has_primal_ray;
+      has_primal_ray = ekk_instance_.primal_ray_record_.index != kNoRayIndex;
       has_invert = ekk_instance_.status_.has_invert;
       assert(has_invert);
     }
     if (has_primal_ray) {
-      if (ekk_instance_.primal_ray_.size()) {
+      if (ekk_instance_.primal_ray_record_.value.size()) {
         // Primal ray is already computed
         highsLogUser(options_.log_options, HighsLogType::kInfo,
                      "Copying known primal ray\n");
         for (HighsInt iCol = 0; iCol < num_col; iCol++)
-          primal_ray_value[iCol] = ekk_instance_.primal_ray_[iCol];
+          primal_ray_value[iCol] = ekk_instance_.primal_ray_record_.value[iCol];
         return return_status;
       } else if (has_invert) {
         // Primal ray is known and can be calculated
         highsLogUser(options_.log_options, HighsLogType::kInfo,
                      "Solving linear system to compute primal ray\n");
-        HighsInt col = ekk_instance_.info_.primal_ray_col_;
+        HighsInt col = ekk_instance_.primal_ray_record_.index;
         assert(ekk_instance_.basis_.nonbasicFlag_[col] == kNonbasicFlagTrue);
         // Get this pivotal column
         vector<double> rhs;
@@ -1496,7 +1596,7 @@ HighsStatus Highs::getPrimalRayInterface(bool& has_primal_ray,
         column.assign(num_row, 0);
         rhs.assign(num_row, 0);
         lp.ensureColwise();
-        HighsInt primal_ray_sign = ekk_instance_.info_.primal_ray_sign_;
+        HighsInt primal_ray_sign = ekk_instance_.primal_ray_record_.sign;
         if (col < num_col) {
           for (HighsInt iEl = lp.a_matrix_.start_[col];
                iEl < lp.a_matrix_.start_[col + 1]; iEl++)
@@ -1517,9 +1617,9 @@ HighsStatus Highs::getPrimalRayInterface(bool& has_primal_ray,
         }
         if (col < num_col) primal_ray_value[col] = -primal_ray_sign;
         // Now save the primal ray itself
-        ekk_instance_.primal_ray_.resize(num_col);
+        ekk_instance_.primal_ray_record_.value.resize(num_col);
         for (HighsInt iCol = 0; iCol < num_col; iCol++)
-          ekk_instance_.primal_ray_[iCol] = primal_ray_value[iCol];
+          ekk_instance_.primal_ray_record_.value[iCol] = primal_ray_value[iCol];
       }
     } else {
       highsLogUser(options_.log_options, HighsLogType::kInfo,
@@ -1594,7 +1694,7 @@ HighsStatus Highs::getIisInterface() {
       return HighsStatus::kError;
     }
   }
-  const bool has_dual_ray = ekk_instance_.status_.has_dual_ray;
+  const bool has_dual_ray = ekk_instance_.dual_ray_record_.index != kNoRayIndex;
   if (ray_option && !has_dual_ray)
     highsLogUser(
         options_.log_options, HighsLogType::kWarning,
@@ -1605,7 +1705,7 @@ HighsStatus Highs::getIisInterface() {
     assert(ekk_instance_.status_.has_invert);
     assert(!lp.is_moved_);
     std::vector<double> rhs;
-    HighsInt iRow = ekk_instance_.info_.dual_ray_row_;
+    HighsInt iRow = ekk_instance_.dual_ray_record_.index;
     rhs.assign(num_row, 0);
     rhs[iRow] = 1;
     std::vector<double> dual_ray_value(num_row);
@@ -1618,7 +1718,7 @@ HighsStatus Highs::getIisInterface() {
     // Full LP option chosen or no dual ray to use
     //
     // Working on the whole model so clear all solver data
-    this->invalidateUserSolverData();
+    this->invalidateSolverData();
     // 1789 Remove this check!
     HighsLp check_lp_before = this->model_.lp_;
     // Apply the elasticity filter to the whole model in order to
