@@ -46,5 +46,16 @@ HighsStatus solveLpRaphael(const HighsOptions& options, HighsTimer& timer,
   printf("Standard form LP has %d columns, %d rows and %d nonzeros\n",
 	 int(num_col), int(num_row), int(num_nz)); 
 
+  // Now solve the LP in standard form using PDLP
+
+  // Once solved, the solution for the LP in standard form obtained
+  // with PDLP needs to be converted to a solution to the original
+  // LP. Do this with a call in the following line to be written by
+  // Julian
+
+  // For the moment, return the model status as kSolveError, and HiGHS
+  // status as error, so HiGHS doesn't expect anything in terms of a
+  // primal or dual solution
+  model_status = HighsModelStatus::kSolveError;
   return HighsStatus::kError;
 }
