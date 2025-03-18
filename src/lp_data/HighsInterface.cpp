@@ -25,12 +25,9 @@ HighsStatus Highs::callFormStandardFormLp() {
   const bool was_colwise = lp.a_matrix_.isColwise();
   lp.a_matrix_.ensureRowwise();
   this->standard_form_valid_ = true;
-  formStandardFormLp(lp,
-		     this->options_.log_options,
-		     this->standard_form_offset_,
-		     this->standard_form_cost_,
-		     this->standard_form_rhs_,
-		     this->standard_form_matrix_);
+  formStandardFormLp(lp, this->options_.log_options,
+                     this->standard_form_offset_, this->standard_form_cost_,
+                     this->standard_form_rhs_, this->standard_form_matrix_);
   // Ensure that the incumbent LP matrix has the same status on exit
   // as it had on entry
   if (was_colwise) lp.a_matrix_.ensureColwise();

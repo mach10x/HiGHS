@@ -8,6 +8,7 @@
 /**@file pdlp/raphael/Solver.cpp
  */
 #include "pdlp/raphael/Solver.h"
+#include "lp_data/HighsLpUtils.h"
 
 HighsStatus solveLpRaphael(HighsLpSolverObject& solver_object) {
   return solveLpRaphael(solver_object.options_, solver_object.timer_,
@@ -27,6 +28,23 @@ HighsStatus solveLpRaphael(const HighsOptions& options, HighsTimer& timer,
   highs_solution.dual_valid = false;
   // Indicate that no imprecise solution has (yet) been found
   resetModelStatusAndHighsInfo(model_status, highs_info);
+
+  double standard_form_offset;
+  std::vector<double> standard_form_cost;
+  std::vector<double> standard_form_rhs;
+  HighsSparseMatrix standard_form_matrix;
+
+  formStandardFormLp(lp,
+		     options.log_options,
+		     standard_form_offset,
+		     standard_form_cost,
+		     standard_form_rhs,
+		     standard_form_matrix);
+  const HighsInt num_col = standard_form_cost.size();
+  const HighsInt num_row = standard_form_rhs.size();
+  const HighsInt num_nz = standard_form_matrix.numNz();
+  printf("Standard form LP has %d columns, %d rows and %d nonzeros\n",
+	 int(num_col), int(num_row), int(num_nz)); 
 
   return HighsStatus::kError;
 }

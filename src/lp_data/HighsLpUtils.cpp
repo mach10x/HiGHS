@@ -3280,15 +3280,21 @@ void getSubVectorsTranspose(const HighsIndexCollection& index_collection,
   }
 }
 
-void formStandardFormLp(const HighsLp& lp,
-			const HighsLogOptions& log_options,
-			double& standard_form_offset_,
-			std::vector<double>& standard_form_cost_,
-			std::vector<double>& standard_form_rhs_,
-			HighsSparseMatrix& standard_form_matrix_) {
-  // Assumes that the constraint matrix of the incumbent LP is rowwise
+void formStandardFormLp(const HighsLp& lp, const HighsLogOptions& log_options,
+                        double& standard_form_offset_,
+                        std::vector<double>& standard_form_cost_,
+                        std::vector<double>& standard_form_rhs_,
+                        HighsSparseMatrix& standard_form_matrix_) {
   const HighsSparseMatrix& matrix = lp.a_matrix_;
-  assert(matrix.isRowwise());
+  HighsSparseMatrix use_matrix;
+  if (!matrix.isRowwise()) {
+    // Needs the matrix rowwise, but matrix is columnwise
+    use_matrix = matrix;
+    use_matrix.ensureRowwise();
+  }
+  const HighsSparseMatrix* use_matrix_p =
+      matrix.isRowwise() ? &matrix : &use_matrix;
+  assert(use_matrix_p->isRowwise());
   // Original rows are processed before columns, so that any original
   // boxed rows can be transformed to pairs of one-sided rows,
   // requiring the standard form matrix to be row-wise. The original
@@ -3337,8 +3343,8 @@ void formStandardFormLp(const HighsLp& lp,
     if (lower == upper) {
       // Equality row
       num_fixed_row++;
-      matrix.getRow(iRow, num_nz, local_row.index_.data(),
-                    local_row.value_.data());
+      use_matrix_p->getRow(iRow, num_nz, local_row.index_.data(),
+                           local_row.value_.data());
       standard_form_matrix_.addRows(local_row);
       standard_form_rhs_.push_back(upper);
       continue;
@@ -3348,8 +3354,8 @@ void formStandardFormLp(const HighsLp& lp,
       assert(upper < kHighsInf);
       HighsInt standard_form_row = standard_form_rhs_.size();
       slack_ix.push_back(standard_form_row + 1);
-      matrix.getRow(iRow, num_nz, local_row.index_.data(),
-                    local_row.value_.data());
+      use_matrix_p->getRow(iRow, num_nz, local_row.index_.data(),
+                           local_row.value_.data());
       standard_form_matrix_.addRows(local_row);
       standard_form_rhs_.push_back(upper);
     } else if (upper >= kHighsInf) {
@@ -3358,8 +3364,8 @@ void formStandardFormLp(const HighsLp& lp,
       assert(lower > -kHighsInf);
       HighsInt standard_form_row = standard_form_rhs_.size();
       slack_ix.push_back(-(standard_form_row + 1));
-      matrix.getRow(iRow, num_nz, local_row.index_.data(),
-                    local_row.value_.data());
+      use_matrix_p->getRow(iRow, num_nz, local_row.index_.data(),
+                           local_row.value_.data());
       standard_form_matrix_.addRows(local_row);
       standard_form_rhs_.push_back(lower);
     } else {
@@ -3369,8 +3375,8 @@ void formStandardFormLp(const HighsLp& lp,
       num_boxed_row++;
       HighsInt standard_form_row = standard_form_rhs_.size();
       slack_ix.push_back(-(standard_form_row + 1));
-      matrix.getRow(iRow, num_nz, local_row.index_.data(),
-                    local_row.value_.data());
+      use_matrix_p->getRow(iRow, num_nz, local_row.index_.data(),
+                           local_row.value_.data());
       standard_form_matrix_.addRows(local_row);
       standard_form_rhs_.push_back(lower);
       // .. and upper slack, adding a copy of the row
@@ -3454,8 +3460,7 @@ void formStandardFormLp(const HighsLp& lp,
            iEl < standard_form_matrix_.start_[iCol + 1]; iEl++) {
         standard_form_rhs_[standard_form_matrix_.index_[iEl]] -=
             standard_form_matrix_.value_[iEl] * upper;
-        standard_form_matrix_.value_[iEl] =
-            -standard_form_matrix_.value_[iEl];
+        standard_form_matrix_.value_[iEl] = -standard_form_matrix_.value_[iEl];
       }
     } else {
       // Free column
@@ -3501,4 +3506,3 @@ void formStandardFormLp(const HighsLp& lp,
                int(num_lower_row), int(num_upper_row), int(num_boxed_row),
                int(num_fixed_row));
 }
-
