@@ -1722,7 +1722,7 @@ HighsStatus Highs::getStandardFormLp(HighsInt& num_col, HighsInt& num_row,
                                      HighsInt* index, double* value) {
   this->logHeader();
   if (!this->standard_form_valid_) {
-    HighsStatus status = formStandardFormLp();
+    HighsStatus status = callFormStandardFormLp();
     assert(status == HighsStatus::kOk);
   }
   num_col = this->standard_form_cost_.size();

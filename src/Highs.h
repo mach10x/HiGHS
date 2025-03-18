@@ -1563,7 +1563,7 @@ class Highs {
   void reportSolvedLpQpStats();
 
   // Interface methods
-  HighsStatus formStandardFormLp();
+  HighsStatus callFormStandardFormLp();
   HighsStatus basisForSolution();
   HighsStatus addColsInterface(
       HighsInt ext_num_new_col, const double* ext_col_cost,

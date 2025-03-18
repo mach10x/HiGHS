@@ -295,4 +295,10 @@ void getSubVectorsTranspose(const HighsIndexCollection& index_collection,
                             HighsInt* sub_matrix_index,
                             double* sub_matrix_value);
 
+void formStandardFormLp(const HighsLp& lp,
+			const HighsLogOptions& log_options,
+			double& standard_form_offset_,
+			std::vector<double>& standard_form_cost_,
+			std::vector<double>& standard_form_rhs_,
+			HighsSparseMatrix& standard_form_matrix_);
 #endif  // LP_DATA_HIGHSLPUTILS_H_
