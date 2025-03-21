@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -15,10 +12,10 @@
 #include <numeric>
 #include <queue>
 
+#include "../extern/pdqsort/pdqsort.h"
 #include "mip/HighsConflictPool.h"
 #include "mip/HighsCutPool.h"
 #include "mip/HighsMipSolverData.h"
-#include "pdqsort/pdqsort.h"
 
 static double activityContributionMin(double coef, const double& lb,
                                       const double& ub) {
@@ -44,6 +41,29 @@ static double activityContributionMax(double coef, const double& lb,
 
     return coef * ub;
   }
+}
+
+static HighsCDouble computeDelta(double val, double oldbound, double newbound,
+                                 double inf, HighsInt& numinfs) {
+  if (oldbound == inf) {
+    --numinfs;
+    return static_cast<HighsCDouble>(newbound) * val;
+  } else if (newbound == inf) {
+    ++numinfs;
+    return static_cast<HighsCDouble>(-oldbound) * val;
+  } else {
+    return (static_cast<HighsCDouble>(newbound) -
+            static_cast<HighsCDouble>(oldbound)) *
+           val;
+  }
+}
+
+static inline double boundRange(double upper_bound, double lower_bound,
+                                double tolerance, HighsVarType var_type) {
+  double range = upper_bound - lower_bound;
+  return range - (var_type == HighsVarType::kContinuous
+                      ? std::max(0.3 * range, 1000.0 * tolerance)
+                      : tolerance);
 }
 
 HighsDomain::HighsDomain(HighsMipSolver& mipsolver) : mipsolver(&mipsolver) {
@@ -157,7 +177,7 @@ void HighsDomain::ConflictPoolPropagation::conflictAdded(HighsInt conflict) {
   }
   switch (numWatched) {
     case 0: {
-      std::pair<HighsInt, HighsInt> latestActive[2];
+      std::array<std::pair<HighsInt, HighsInt>, 2> latestActive;
       HighsInt numActive = 0;
       for (HighsInt i = start; i != end; ++i) {
         HighsInt pos = conflictEntries[i].boundtype == HighsBoundType::kLower
@@ -253,7 +273,7 @@ void HighsDomain::ConflictPoolPropagation::updateActivityUbChange(
     HighsInt conflict = i >> 1;
 
     const HighsDomainChange& domchg = watchedLiterals_[i].domchg;
-    HighsInt numInactiveDelta =
+    uint8_t numInactiveDelta =
         (domchg.boundval < newbound) - (domchg.boundval < oldbound);
     if (numInactiveDelta != 0) {
       conflictFlag_[conflict] += numInactiveDelta;
@@ -283,8 +303,8 @@ void HighsDomain::ConflictPoolPropagation::propagateConflict(
 
   WatchedLiteral* watched = watchedLiterals_.data() + 2 * conflict;
 
-  HighsInt inactive[2];
-  HighsInt numInactive = 0;
+  std::array<HighsInt, 2> inactive;
+  uint8_t numInactive = 0;
   for (HighsInt i = start; i != end; ++i) {
     if (domain->isActive(entries[i])) continue;
 
@@ -369,14 +389,11 @@ void HighsDomain::CutpoolPropagation::recomputeCapacityThreshold(HighsInt cut) {
     if (domain->col_upper_[arindex[i]] == domain->col_lower_[arindex[i]])
       continue;
 
-    double boundRange =
-        domain->col_upper_[arindex[i]] - domain->col_lower_[arindex[i]];
-
-    boundRange -= domain->variableType(arindex[i]) == HighsVarType::kContinuous
-                      ? std::max(0.3 * boundRange, 1000.0 * domain->feastol())
-                      : domain->feastol();
-
-    double threshold = std::fabs(arvalue[i]) * boundRange;
+    double threshold =
+        std::fabs(arvalue[i]) * boundRange(domain->col_upper_[arindex[i]],
+                                           domain->col_lower_[arindex[i]],
+                                           domain->feastol(),
+                                           domain->variableType(arindex[i]));
 
     capacityThreshold_[cut] =
         std::max({capacityThreshold_[cut], threshold, domain->feastol()});
@@ -461,17 +478,8 @@ void HighsDomain::CutpoolPropagation::updateActivityLbChange(HighsInt col,
   cutpool->getMatrix().forEachPositiveColumnEntry(
       col, [&](HighsInt row, double val) {
         assert(val > 0);
-        double deltamin;
-
-        if (oldbound == -kHighsInf) {
-          --activitycutsinf_[row];
-          deltamin = newbound * val;
-        } else if (newbound == -kHighsInf) {
-          ++activitycutsinf_[row];
-          deltamin = -oldbound * val;
-        } else {
-          deltamin = (newbound - oldbound) * val;
-        }
+        HighsCDouble deltamin = computeDelta(val, oldbound, newbound,
+                                             -kHighsInf, activitycutsinf_[row]);
         activitycuts_[row] += deltamin;
 
         if (deltamin <= 0) {
@@ -504,18 +512,8 @@ void HighsDomain::CutpoolPropagation::updateActivityLbChange(HighsInt col,
     cutpool->getMatrix().forEachPositiveColumnEntry(
         col, [&](HighsInt row, double val) {
           assert(val > 0);
-          double deltamin;
-
-          if (oldbound == -kHighsInf) {
-            --activitycutsinf_[row];
-            deltamin = newbound * val;
-          } else if (newbound == -kHighsInf) {
-            ++activitycutsinf_[row];
-            deltamin = -oldbound * val;
-          } else {
-            deltamin = (newbound - oldbound) * val;
-          }
-          activitycuts_[row] += deltamin;
+          activitycuts_[row] += computeDelta(val, oldbound, newbound,
+                                             -kHighsInf, activitycutsinf_[row]);
 
           if (domain->infeasible_reason.index == row) return false;
 
@@ -541,17 +539,8 @@ void HighsDomain::CutpoolPropagation::updateActivityUbChange(HighsInt col,
   cutpool->getMatrix().forEachNegativeColumnEntry(
       col, [&](HighsInt row, double val) {
         assert(val < 0);
-        double deltamin;
-
-        if (oldbound == kHighsInf) {
-          --activitycutsinf_[row];
-          deltamin = newbound * val;
-        } else if (newbound == kHighsInf) {
-          ++activitycutsinf_[row];
-          deltamin = -oldbound * val;
-        } else {
-          deltamin = (newbound - oldbound) * val;
-        }
+        HighsCDouble deltamin = computeDelta(val, oldbound, newbound, kHighsInf,
+                                             activitycutsinf_[row]);
         activitycuts_[row] += deltamin;
 
         if (deltamin <= 0) {
@@ -582,18 +571,8 @@ void HighsDomain::CutpoolPropagation::updateActivityUbChange(HighsInt col,
     cutpool->getMatrix().forEachNegativeColumnEntry(
         col, [&](HighsInt row, double val) {
           assert(val < 0);
-          double deltamin;
-
-          if (oldbound == kHighsInf) {
-            --activitycutsinf_[row];
-            deltamin = newbound * val;
-          } else if (newbound == kHighsInf) {
-            ++activitycutsinf_[row];
-            deltamin = -oldbound * val;
-          } else {
-            deltamin = (newbound - oldbound) * val;
-          }
-          activitycuts_[row] += deltamin;
+          activitycuts_[row] += computeDelta(val, oldbound, newbound, kHighsInf,
+                                             activitycutsinf_[row]);
 
           if (domain->infeasible_reason.index == row) return false;
 
@@ -780,12 +759,11 @@ void HighsDomain::ObjectivePropagation::recomputeCapacityThreshold() {
   for (HighsInt i = partitionStarts[numPartitions]; i < numObjNzs; ++i) {
     HighsInt col = objNonzeros[i];
 
-    double boundRange = (domain->col_upper_[col] - domain->col_lower_[col]);
-    boundRange -= domain->variableType(col) == HighsVarType::kContinuous
-                      ? std::max(0.3 * boundRange, 1000.0 * domain->feastol())
-                      : domain->feastol();
-    capacityThreshold =
-        std::max(capacityThreshold, std::fabs(cost[col]) * boundRange);
+    capacityThreshold = std::max(
+        capacityThreshold,
+        std::fabs(cost[col]) *
+            boundRange(domain->col_upper_[col], domain->col_lower_[col],
+                       domain->feastol(), domain->variableType(col)));
   }
 }
 
@@ -793,11 +771,11 @@ void HighsDomain::ObjectivePropagation::updateActivityLbChange(
     HighsInt col, double oldbound, double newbound) {
   if (cost[col] <= 0.0) {
     if (cost[col] != 0.0 && newbound < oldbound) {
-      double boundRange = domain->col_upper_[col] - newbound;
-      boundRange -= domain->variableType(col) == HighsVarType::kContinuous
-                        ? std::max(0.3 * boundRange, 1000.0 * domain->feastol())
-                        : domain->feastol();
-      capacityThreshold = std::max(capacityThreshold, -cost[col] * boundRange);
+      capacityThreshold =
+          std::max(capacityThreshold,
+                   -cost[col] * boundRange(domain->col_upper_[col], newbound,
+                                           domain->feastol(),
+                                           domain->variableType(col)));
       isPropagated = false;
     }
     debugCheckObjectiveLower();
@@ -821,11 +799,11 @@ void HighsDomain::ObjectivePropagation::updateActivityLbChange(
     debugCheckObjectiveLower();
 
     if (newbound < oldbound) {
-      double boundRange = (domain->col_upper_[col] - domain->col_lower_[col]);
-      boundRange -= domain->variableType(col) == HighsVarType::kContinuous
-                        ? std::max(0.3 * boundRange, 1000.0 * domain->feastol())
-                        : domain->feastol();
-      capacityThreshold = std::max(capacityThreshold, cost[col] * boundRange);
+      capacityThreshold = std::max(
+          capacityThreshold,
+          cost[col] * boundRange(domain->col_upper_[col],
+                                 domain->col_lower_[col], domain->feastol(),
+                                 domain->variableType(col)));
     } else if (numInfObjLower == 0 &&
                objectiveLower > domain->mipsolver->mipdata_->upper_limit) {
       domain->infeasible_ = true;
@@ -914,11 +892,10 @@ void HighsDomain::ObjectivePropagation::updateActivityUbChange(
     HighsInt col, double oldbound, double newbound) {
   if (cost[col] >= 0.0) {
     if (cost[col] != 0.0 && newbound > oldbound) {
-      double boundRange = newbound - domain->col_lower_[col];
-      boundRange -= domain->variableType(col) == HighsVarType::kContinuous
-                        ? std::max(0.3 * boundRange, 1000.0 * domain->feastol())
-                        : domain->feastol();
-      capacityThreshold = std::max(capacityThreshold, cost[col] * boundRange);
+      capacityThreshold = std::max(
+          capacityThreshold,
+          cost[col] * boundRange(newbound, domain->col_lower_[col],
+                                 domain->feastol(), domain->variableType(col)));
       isPropagated = false;
     }
     debugCheckObjectiveLower();
@@ -942,11 +919,11 @@ void HighsDomain::ObjectivePropagation::updateActivityUbChange(
     debugCheckObjectiveLower();
 
     if (newbound > oldbound) {
-      double boundRange = (domain->col_upper_[col] - domain->col_lower_[col]);
-      boundRange -= domain->variableType(col) == HighsVarType::kContinuous
-                        ? std::max(0.3 * boundRange, 1000.0 * domain->feastol())
-                        : domain->feastol();
-      capacityThreshold = std::max(capacityThreshold, -cost[col] * boundRange);
+      capacityThreshold = std::max(
+          capacityThreshold,
+          -cost[col] * boundRange(domain->col_upper_[col],
+                                  domain->col_lower_[col], domain->feastol(),
+                                  domain->variableType(col)));
     } else if (numInfObjLower == 0 &&
                objectiveLower > domain->mipsolver->mipdata_->upper_limit) {
       domain->infeasible_ = true;
@@ -1287,7 +1264,6 @@ void HighsDomain::computeMinActivity(HighsInt start, HighsInt end,
         activitymin += contributionmin;
     }
 
-    activitymin.renormalize();
   } else {
     activitymin = 0.0;
     ninfmin = 0;
@@ -1305,9 +1281,8 @@ void HighsDomain::computeMinActivity(HighsInt start, HighsInt end,
       else
         activitymin += contributionmin;
     }
-
-    activitymin.renormalize();
   }
+  activitymin.renormalize();
 }
 
 void HighsDomain::computeMaxActivity(HighsInt start, HighsInt end,
@@ -1333,8 +1308,6 @@ void HighsDomain::computeMaxActivity(HighsInt start, HighsInt end,
       else
         activitymax += contributionmin;
     }
-
-    activitymax.renormalize();
   } else {
     activitymax = 0.0;
     ninfmax = 0;
@@ -1352,9 +1325,8 @@ void HighsDomain::computeMaxActivity(HighsInt start, HighsInt end,
       else
         activitymax += contributionmin;
     }
-
-    activitymax.renormalize();
   }
+  activitymax.renormalize();
 }
 
 double HighsDomain::adjustedUb(HighsInt col, HighsCDouble boundVal,
@@ -1362,13 +1334,10 @@ double HighsDomain::adjustedUb(HighsInt col, HighsCDouble boundVal,
   double bound;
 
   if (mipsolver->variableType(col) != HighsVarType::kContinuous) {
-    bound = std::floor(double(boundVal + mipsolver->mipdata_->feastol));
-    if (bound < col_upper_[col] &&
-        col_upper_[col] - bound >
-            1000.0 * mipsolver->mipdata_->feastol * std::fabs(bound))
-      accept = true;
-    else
-      accept = false;
+    bound = static_cast<double>(floor(boundVal + mipsolver->mipdata_->feastol));
+    accept = bound < col_upper_[col] &&
+             col_upper_[col] - bound >
+                 1000.0 * mipsolver->mipdata_->feastol * std::fabs(bound);
   } else {
     if (std::fabs(double(boundVal) - col_lower_[col]) <=
         mipsolver->mipdata_->epsilon)
@@ -1397,13 +1366,10 @@ double HighsDomain::adjustedLb(HighsInt col, HighsCDouble boundVal,
   double bound;
 
   if (mipsolver->variableType(col) != HighsVarType::kContinuous) {
-    bound = std::ceil(double(boundVal - mipsolver->mipdata_->feastol));
-    if (bound > col_lower_[col] &&
-        bound - col_lower_[col] >
-            1000.0 * mipsolver->mipdata_->feastol * std::fabs(bound))
-      accept = true;
-    else
-      accept = false;
+    bound = static_cast<double>(ceil(boundVal - mipsolver->mipdata_->feastol));
+    accept = bound > col_lower_[col] &&
+             bound - col_lower_[col] >
+                 1000.0 * mipsolver->mipdata_->feastol * std::fabs(bound);
   } else {
     if (std::fabs(col_upper_[col] - double(boundVal)) <=
         mipsolver->mipdata_->epsilon)
@@ -1517,14 +1483,10 @@ HighsInt HighsDomain::propagateRowLower(const HighsInt* Rindex,
 void HighsDomain::updateThresholdLbChange(HighsInt col, double newbound,
                                           double val, double& threshold) {
   if (newbound != col_upper_[col]) {
-    double boundRange = (col_upper_[col] - newbound);
-
-    boundRange -=
-        variableType(col) == HighsVarType::kContinuous
-            ? std::max(0.3 * boundRange, 1000.0 * mipsolver->mipdata_->feastol)
-            : mipsolver->mipdata_->feastol;
-
-    double thresholdNew = std::fabs(val) * boundRange;
+    double thresholdNew =
+        std::fabs(val) * boundRange(col_upper_[col], newbound,
+                                    mipsolver->mipdata_->feastol,
+                                    variableType(col));
 
     // the new threshold is now the maximum of the new threshold and the current
     // one
@@ -1536,14 +1498,10 @@ void HighsDomain::updateThresholdLbChange(HighsInt col, double newbound,
 void HighsDomain::updateThresholdUbChange(HighsInt col, double newbound,
                                           double val, double& threshold) {
   if (newbound != col_lower_[col]) {
-    double boundRange = (newbound - col_lower_[col]);
-
-    boundRange -=
-        variableType(col) == HighsVarType::kContinuous
-            ? std::max(0.3 * boundRange, 1000.0 * mipsolver->mipdata_->feastol)
-            : mipsolver->mipdata_->feastol;
-
-    double thresholdNew = std::fabs(val) * boundRange;
+    double thresholdNew =
+        std::fabs(val) * boundRange(newbound, col_lower_[col],
+                                    mipsolver->mipdata_->feastol,
+                                    variableType(col));
 
     // the new threshold is now the maximum of the new threshold and the current
     // one
@@ -1567,16 +1525,9 @@ void HighsDomain::updateActivityLbChange(HighsInt col, double oldbound,
 
   for (HighsInt i = start; i != end; ++i) {
     if (mip->a_matrix_.value_[i] > 0) {
-      double deltamin;
-      if (oldbound == -kHighsInf) {
-        --activitymininf_[mip->a_matrix_.index_[i]];
-        deltamin = newbound * mip->a_matrix_.value_[i];
-      } else if (newbound == -kHighsInf) {
-        ++activitymininf_[mip->a_matrix_.index_[i]];
-        deltamin = -oldbound * mip->a_matrix_.value_[i];
-      } else {
-        deltamin = (newbound - oldbound) * mip->a_matrix_.value_[i];
-      }
+      HighsCDouble deltamin =
+          computeDelta(mip->a_matrix_.value_[i], oldbound, newbound, -kHighsInf,
+                       activitymininf_[mip->a_matrix_.index_[i]]);
       activitymin_[mip->a_matrix_.index_[i]] += deltamin;
 
 #ifndef NDEBUG
@@ -1593,6 +1544,14 @@ void HighsDomain::updateActivityLbChange(HighsInt col, double oldbound,
         assert(tmpinf == activitymininf_[mip->a_matrix_.index_[i]]);
       }
 #endif
+
+      if (recordRedundantRows_ &&
+          mip->row_lower_[mip->a_matrix_.index_[i]] != -kHighsInf &&
+          mip->row_upper_[mip->a_matrix_.index_[i]] == kHighsInf)
+        updateRedundantRows(mip->a_matrix_.index_[i], HighsInt{1},
+                            activitymininf_[mip->a_matrix_.index_[i]],
+                            activitymin_[mip->a_matrix_.index_[i]],
+                            mip->row_lower_[mip->a_matrix_.index_[i]]);
 
       if (deltamin <= 0) {
         updateThresholdLbChange(col, newbound, mip->a_matrix_.value_[i],
@@ -1618,16 +1577,9 @@ void HighsDomain::updateActivityLbChange(HighsInt col, double oldbound,
           mip->row_upper_[mip->a_matrix_.index_[i]] != kHighsInf)
         markPropagate(mip->a_matrix_.index_[i]);
     } else {
-      double deltamax;
-      if (oldbound == -kHighsInf) {
-        --activitymaxinf_[mip->a_matrix_.index_[i]];
-        deltamax = newbound * mip->a_matrix_.value_[i];
-      } else if (newbound == -kHighsInf) {
-        ++activitymaxinf_[mip->a_matrix_.index_[i]];
-        deltamax = -oldbound * mip->a_matrix_.value_[i];
-      } else {
-        deltamax = (newbound - oldbound) * mip->a_matrix_.value_[i];
-      }
+      HighsCDouble deltamax =
+          computeDelta(mip->a_matrix_.value_[i], oldbound, newbound, -kHighsInf,
+                       activitymaxinf_[mip->a_matrix_.index_[i]]);
       activitymax_[mip->a_matrix_.index_[i]] += deltamax;
 
 #ifndef NDEBUG
@@ -1644,6 +1596,14 @@ void HighsDomain::updateActivityLbChange(HighsInt col, double oldbound,
         assert(tmpinf == activitymaxinf_[mip->a_matrix_.index_[i]]);
       }
 #endif
+
+      if (recordRedundantRows_ &&
+          mip->row_lower_[mip->a_matrix_.index_[i]] == -kHighsInf &&
+          mip->row_upper_[mip->a_matrix_.index_[i]] != kHighsInf)
+        updateRedundantRows(mip->a_matrix_.index_[i], HighsInt{-1},
+                            activitymaxinf_[mip->a_matrix_.index_[i]],
+                            activitymax_[mip->a_matrix_.index_[i]],
+                            mip->row_upper_[mip->a_matrix_.index_[i]]);
 
       if (deltamax >= 0) {
         updateThresholdLbChange(col, newbound, mip->a_matrix_.value_[i],
@@ -1684,29 +1644,13 @@ void HighsDomain::updateActivityLbChange(HighsInt col, double oldbound,
     std::swap(oldbound, newbound);
     for (HighsInt i = start; i != end; ++i) {
       if (mip->a_matrix_.value_[i] > 0) {
-        double deltamin;
-        if (oldbound == -kHighsInf) {
-          --activitymininf_[mip->a_matrix_.index_[i]];
-          deltamin = newbound * mip->a_matrix_.value_[i];
-        } else if (newbound == -kHighsInf) {
-          ++activitymininf_[mip->a_matrix_.index_[i]];
-          deltamin = -oldbound * mip->a_matrix_.value_[i];
-        } else {
-          deltamin = (newbound - oldbound) * mip->a_matrix_.value_[i];
-        }
-        activitymin_[mip->a_matrix_.index_[i]] += deltamin;
+        activitymin_[mip->a_matrix_.index_[i]] +=
+            computeDelta(mip->a_matrix_.value_[i], oldbound, newbound,
+                         -kHighsInf, activitymininf_[mip->a_matrix_.index_[i]]);
       } else {
-        double deltamax;
-        if (oldbound == -kHighsInf) {
-          --activitymaxinf_[mip->a_matrix_.index_[i]];
-          deltamax = newbound * mip->a_matrix_.value_[i];
-        } else if (newbound == -kHighsInf) {
-          ++activitymaxinf_[mip->a_matrix_.index_[i]];
-          deltamax = -oldbound * mip->a_matrix_.value_[i];
-        } else {
-          deltamax = (newbound - oldbound) * mip->a_matrix_.value_[i];
-        }
-        activitymax_[mip->a_matrix_.index_[i]] += deltamax;
+        activitymax_[mip->a_matrix_.index_[i]] +=
+            computeDelta(mip->a_matrix_.value_[i], oldbound, newbound,
+                         -kHighsInf, activitymaxinf_[mip->a_matrix_.index_[i]]);
       }
     }
 
@@ -1736,16 +1680,9 @@ void HighsDomain::updateActivityUbChange(HighsInt col, double oldbound,
 
   for (HighsInt i = start; i != end; ++i) {
     if (mip->a_matrix_.value_[i] > 0) {
-      double deltamax;
-      if (oldbound == kHighsInf) {
-        --activitymaxinf_[mip->a_matrix_.index_[i]];
-        deltamax = newbound * mip->a_matrix_.value_[i];
-      } else if (newbound == kHighsInf) {
-        ++activitymaxinf_[mip->a_matrix_.index_[i]];
-        deltamax = -oldbound * mip->a_matrix_.value_[i];
-      } else {
-        deltamax = (newbound - oldbound) * mip->a_matrix_.value_[i];
-      }
+      HighsCDouble deltamax =
+          computeDelta(mip->a_matrix_.value_[i], oldbound, newbound, kHighsInf,
+                       activitymaxinf_[mip->a_matrix_.index_[i]]);
       activitymax_[mip->a_matrix_.index_[i]] += deltamax;
 
 #ifndef NDEBUG
@@ -1762,6 +1699,14 @@ void HighsDomain::updateActivityUbChange(HighsInt col, double oldbound,
         assert(tmpinf == activitymaxinf_[mip->a_matrix_.index_[i]]);
       }
 #endif
+
+      if (recordRedundantRows_ &&
+          mip->row_lower_[mip->a_matrix_.index_[i]] == -kHighsInf &&
+          mip->row_upper_[mip->a_matrix_.index_[i]] != kHighsInf)
+        updateRedundantRows(mip->a_matrix_.index_[i], HighsInt{-1},
+                            activitymaxinf_[mip->a_matrix_.index_[i]],
+                            activitymax_[mip->a_matrix_.index_[i]],
+                            mip->row_upper_[mip->a_matrix_.index_[i]]);
 
       if (deltamax >= 0) {
         updateThresholdUbChange(col, newbound, mip->a_matrix_.value_[i],
@@ -1790,17 +1735,9 @@ void HighsDomain::updateActivityUbChange(HighsInt col, double oldbound,
         // propagateinds_.push_back(mip->a_matrix_.index_[i]);
       }
     } else {
-      double deltamin;
-      if (oldbound == kHighsInf) {
-        --activitymininf_[mip->a_matrix_.index_[i]];
-        deltamin = newbound * mip->a_matrix_.value_[i];
-      } else if (newbound == kHighsInf) {
-        ++activitymininf_[mip->a_matrix_.index_[i]];
-        deltamin = -oldbound * mip->a_matrix_.value_[i];
-      } else {
-        deltamin = (newbound - oldbound) * mip->a_matrix_.value_[i];
-      }
-
+      HighsCDouble deltamin =
+          computeDelta(mip->a_matrix_.value_[i], oldbound, newbound, kHighsInf,
+                       activitymininf_[mip->a_matrix_.index_[i]]);
       activitymin_[mip->a_matrix_.index_[i]] += deltamin;
 
 #ifndef NDEBUG
@@ -1817,6 +1754,14 @@ void HighsDomain::updateActivityUbChange(HighsInt col, double oldbound,
         assert(tmpinf == activitymininf_[mip->a_matrix_.index_[i]]);
       }
 #endif
+
+      if (recordRedundantRows_ &&
+          mip->row_lower_[mip->a_matrix_.index_[i]] != -kHighsInf &&
+          mip->row_upper_[mip->a_matrix_.index_[i]] == kHighsInf)
+        updateRedundantRows(mip->a_matrix_.index_[i], HighsInt{1},
+                            activitymininf_[mip->a_matrix_.index_[i]],
+                            activitymin_[mip->a_matrix_.index_[i]],
+                            mip->row_lower_[mip->a_matrix_.index_[i]]);
 
       if (deltamin <= 0) {
         updateThresholdUbChange(col, newbound, mip->a_matrix_.value_[i],
@@ -1860,30 +1805,13 @@ void HighsDomain::updateActivityUbChange(HighsInt col, double oldbound,
     std::swap(oldbound, newbound);
     for (HighsInt i = start; i != end; ++i) {
       if (mip->a_matrix_.value_[i] > 0) {
-        double deltamax;
-        if (oldbound == kHighsInf) {
-          --activitymaxinf_[mip->a_matrix_.index_[i]];
-          deltamax = newbound * mip->a_matrix_.value_[i];
-        } else if (newbound == kHighsInf) {
-          ++activitymaxinf_[mip->a_matrix_.index_[i]];
-          deltamax = -oldbound * mip->a_matrix_.value_[i];
-        } else {
-          deltamax = (newbound - oldbound) * mip->a_matrix_.value_[i];
-        }
-        activitymax_[mip->a_matrix_.index_[i]] += deltamax;
+        activitymax_[mip->a_matrix_.index_[i]] +=
+            computeDelta(mip->a_matrix_.value_[i], oldbound, newbound,
+                         kHighsInf, activitymaxinf_[mip->a_matrix_.index_[i]]);
       } else {
-        double deltamin;
-        if (oldbound == kHighsInf) {
-          --activitymininf_[mip->a_matrix_.index_[i]];
-          deltamin = newbound * mip->a_matrix_.value_[i];
-        } else if (newbound == kHighsInf) {
-          ++activitymininf_[mip->a_matrix_.index_[i]];
-          deltamin = -oldbound * mip->a_matrix_.value_[i];
-        } else {
-          deltamin = (newbound - oldbound) * mip->a_matrix_.value_[i];
-        }
-
-        activitymin_[mip->a_matrix_.index_[i]] += deltamin;
+        activitymin_[mip->a_matrix_.index_[i]] +=
+            computeDelta(mip->a_matrix_.value_[i], oldbound, newbound,
+                         kHighsInf, activitymininf_[mip->a_matrix_.index_[i]]);
       }
     }
 
@@ -1908,16 +1836,37 @@ void HighsDomain::recomputeCapacityThreshold(HighsInt row) {
 
     if (col_upper_[col] == col_lower_[col]) continue;
 
-    double boundRange = col_upper_[col] - col_lower_[col];
-
-    boundRange -= variableType(col) == HighsVarType::kContinuous
-                      ? std::max(0.3 * boundRange, 1000.0 * feastol())
-                      : feastol();
-
-    double threshold = std::fabs(mipsolver->mipdata_->ARvalue_[i]) * boundRange;
+    double threshold = std::fabs(mipsolver->mipdata_->ARvalue_[i]) *
+                       boundRange(col_upper_[col], col_lower_[col], feastol(),
+                                  variableType(col));
 
     capacityThreshold_[row] =
         std::max({capacityThreshold_[row], threshold, feastol()});
+  }
+}
+
+void HighsDomain::updateRedundantRows(HighsInt row, HighsInt direction,
+                                      HighsInt numinf, HighsCDouble activity,
+                                      double bound) {
+  if (numinf != 0 || direction * activity <=
+                         direction * bound + mipsolver->mipdata_->feastol) {
+    // row that was found to be redundant should not be non-redundant
+    assert(redundantRows_.find(row) == nullptr);
+    return;
+  }
+  // row is redundant
+  redundantRows_.insert(row);
+}
+
+double HighsDomain::getRedundantRowValue(HighsInt row) const {
+  if (mipsolver->model_->row_lower_[row] != -kHighsInf) {
+    assert(mipsolver->model_->row_upper_[row] == kHighsInf);
+    return static_cast<double>(activitymin_[row] -
+                               mipsolver->model_->row_lower_[row]);
+  } else {
+    assert(mipsolver->model_->row_upper_[row] != kHighsInf);
+    return static_cast<double>(activitymax_[row] -
+                               mipsolver->model_->row_upper_[row]);
   }
 }
 
@@ -2180,13 +2129,13 @@ void HighsDomain::setDomainChangeStack(
     if (k == stacksize) return;
 
     // For redundant branching bound changes we need to be more careful due to
-    // symmetry handling. If these boundchanges are redundant simply because the
-    // corresponding subtree was enumerated and hence the global bound updated,
-    // then we still need to keep their status as branching variables for
-    // computing correct stabilizers.
-    // They can, however, be safely dropped if they are either strictly
-    // redundant in the global domain, or if there is already a local bound
-    // change that makes the branching change redundant.
+    // symmetry handling. If these bound changes are redundant simply because
+    // the corresponding subtree was enumerated and hence the global bound
+    // updated, then we still need to keep their status as branching variables
+    // for computing correct stabilizers. They can, however, be safely dropped
+    // if they are either strictly redundant in the global domain, or if there
+    // is already a local bound change that makes the branching change
+    // redundant.
     if (domchgstack[k].boundtype == HighsBoundType::kLower) {
       if (domchgstack[k].boundval <= col_lower_[domchgstack[k].column]) {
         if (domchgstack[k].boundval < col_lower_[domchgstack[k].column])
@@ -2745,6 +2694,12 @@ HighsDomain::ConflictSet::ConflictSet(HighsDomain& localdom_)
       resolveQueue(),
       resolvedDomainChanges() {}
 
+static inline double computePrio(double val, double bound, double globalbound,
+                                 int64_t numnodes) {
+  return std::fabs(val * (bound - globalbound) *
+                   static_cast<double>(1 + numnodes));
+}
+
 bool HighsDomain::ConflictSet::explainBoundChangeGeq(
     const std::set<LocalDomChg>& currentFrontier, const LocalDomChg& domchg,
     const HighsInt* inds, const double* vals, HighsInt len, double rhs,
@@ -2784,8 +2739,8 @@ bool HighsDomain::ConflictSet::explainBoundChangeGeq(
         cand.baseBound = globaldom.col_upper_[col];
 
       cand.delta = vals[i] * (ub - cand.baseBound);
-      cand.prio = fabs(vals[i] * (ub - globaldom.col_upper_[col]) *
-                       (1 + nodequeue.numNodesDown(col)));
+      cand.prio = computePrio(vals[i], ub, globaldom.col_upper_[col],
+                              nodequeue.numNodesDown(col));
     } else {
       double lb = localdom.getColLowerPos(col, domchg.pos, cand.boundPos);
       if (globaldom.col_lower_[col] >= lb || cand.boundPos == -1) continue;
@@ -2801,8 +2756,8 @@ bool HighsDomain::ConflictSet::explainBoundChangeGeq(
         cand.baseBound = globaldom.col_lower_[col];
 
       cand.delta = vals[i] * (lb - cand.baseBound);
-      cand.prio = fabs(vals[i] * (lb - globaldom.col_lower_[col]) *
-                       (1 + nodequeue.numNodesUp(col)));
+      cand.prio = computePrio(vals[i], lb, globaldom.col_lower_[col],
+                              nodequeue.numNodesUp(col));
     }
 
     resolveBuffer.push_back(cand);
@@ -2893,8 +2848,8 @@ bool HighsDomain::ConflictSet::explainBoundChangeLeq(
         cand.baseBound = globaldom.col_lower_[col];
 
       cand.delta = vals[i] * (lb - cand.baseBound);
-      cand.prio = fabs(vals[i] * (lb - globaldom.col_lower_[col]) *
-                       (1 + nodequeue.numNodesUp(col)));
+      cand.prio = computePrio(vals[i], lb, globaldom.col_lower_[col],
+                              nodequeue.numNodesUp(col));
     } else {
       double ub = localdom.getColUpperPos(col, domchg.pos, cand.boundPos);
       if (globaldom.col_upper_[col] <= ub || cand.boundPos == -1) continue;
@@ -2909,8 +2864,8 @@ bool HighsDomain::ConflictSet::explainBoundChangeLeq(
         cand.baseBound = globaldom.col_upper_[col];
 
       cand.delta = vals[i] * (ub - cand.baseBound);
-      cand.prio = fabs(vals[i] * (ub - globaldom.col_upper_[col]) *
-                       (1 + nodequeue.numNodesDown(col)));
+      cand.prio = computePrio(vals[i], ub, globaldom.col_upper_[col],
+                              nodequeue.numNodesDown(col));
     }
 
     resolveBuffer.push_back(cand);
@@ -3037,6 +2992,7 @@ bool HighsDomain::ConflictSet::resolveLinearGeq(HighsCDouble M, double Mupper,
             relaxUb = std::floor(relaxUb);
 
           if (relaxUb - ub <= localdom.feastol()) continue;
+
           locdomchg.domchg.boundval = relaxUb;
 
           if (relaxUb - gub >= -localdom.mipsolver->mipdata_->epsilon) {
@@ -3378,15 +3334,15 @@ bool HighsDomain::ConflictSet::explainInfeasibilityGeq(const HighsInt* inds,
       cand.baseBound = globaldom.col_upper_[col];
       if (cand.baseBound <= ub || cand.boundPos == -1) continue;
       cand.delta = vals[i] * (ub - cand.baseBound);
-      cand.prio = fabs(vals[i] * (ub - globaldom.col_upper_[col]) *
-                       (1 + nodequeue.numNodesDown(col)));
+      cand.prio = computePrio(vals[i], ub, globaldom.col_upper_[col],
+                              nodequeue.numNodesDown(col));
     } else {
       double lb = localdom.getColLowerPos(col, infeasible_pos, cand.boundPos);
       cand.baseBound = globaldom.col_lower_[col];
       if (cand.baseBound >= lb || cand.boundPos == -1) continue;
       cand.delta = vals[i] * (lb - cand.baseBound);
-      cand.prio = fabs(vals[i] * (lb - globaldom.col_lower_[col]) *
-                       (1 + nodequeue.numNodesUp(col)));
+      cand.prio = computePrio(vals[i], lb, globaldom.col_lower_[col],
+                              nodequeue.numNodesUp(col));
     }
 
     resolveBuffer.push_back(cand);
@@ -3425,15 +3381,15 @@ bool HighsDomain::ConflictSet::explainInfeasibilityLeq(const HighsInt* inds,
       cand.baseBound = globaldom.col_lower_[col];
       if (cand.baseBound >= lb || cand.boundPos == -1) continue;
       cand.delta = vals[i] * (lb - cand.baseBound);
-      cand.prio = fabs(vals[i] * (lb - globaldom.col_lower_[col]) *
-                       (1 + nodequeue.numNodesUp(col)));
+      cand.prio = computePrio(vals[i], lb, globaldom.col_lower_[col],
+                              nodequeue.numNodesUp(col));
     } else {
       double ub = localdom.getColUpperPos(col, infeasible_pos, cand.boundPos);
       cand.baseBound = globaldom.col_upper_[col];
       if (cand.baseBound <= ub || cand.boundPos == -1) continue;
       cand.delta = vals[i] * (ub - cand.baseBound);
-      cand.prio = fabs(vals[i] * (ub - globaldom.col_upper_[col]) *
-                       (1 + nodequeue.numNodesDown(col)));
+      cand.prio = computePrio(vals[i], ub, globaldom.col_upper_[col],
+                              nodequeue.numNodesDown(col));
     }
 
     resolveBuffer.push_back(cand);

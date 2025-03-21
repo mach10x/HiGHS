@@ -2,15 +2,12 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /**@file mip/HighsPathSeparator.h
  * @brief Class for separating cuts from heuristically aggregating rows from the
- * LP to indetify path's in a network
+ * LP to identify path's in a network
  *
  */
 
@@ -34,7 +31,7 @@ class HighsPathSeparator : public HighsSeparator {
                           HighsCutPool& cutpool) override;
 
   HighsPathSeparator(const HighsMipSolver& mipsolver)
-      : HighsSeparator(mipsolver, "PathAggr sepa", "Agg") {
+      : HighsSeparator(mipsolver, "PathAggr sepa") {
     randgen.initialise(mipsolver.options_mip_->random_seed);
   }
 };

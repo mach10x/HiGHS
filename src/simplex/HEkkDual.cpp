@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -402,6 +399,7 @@ void HEkkDual::initialiseInstance() {
   solver_num_col = ekk_instance_.lp_.num_col_;
   solver_num_row = ekk_instance_.lp_.num_row_;
   solver_num_tot = solver_num_col + solver_num_row;
+  inv_solver_num_row = 1.0 / solver_num_row;
 
   a_matrix = &ekk_instance_.lp_.a_matrix_;
   simplex_nla = &ekk_instance_.simplex_nla_;
@@ -722,6 +720,17 @@ void HEkkDual::solvePhase1() {
     // chooseColumn has failed or excessive primal values have been
     // created Behave as "Report strange issues" below
     solve_phase = kSolvePhaseError;
+    // Solve error is opaque to users, so put in some logging
+    if (rebuild_reason == kRebuildReasonChooseColumnFail) {
+      highsLogUser(
+          ekk_instance_.options_->log_options, HighsLogType::kError,
+          "Dual simplex ratio test failed due to excessive dual values: "
+          "consider scaling down the LP objective coefficients\n");
+    } else {
+      highsLogUser(ekk_instance_.options_->log_options, HighsLogType::kError,
+                   "Dual simplex detected excessive primal values: consider "
+                   "scaling down the LP bounds\n");
+    }
     highsLogDev(ekk_instance_.options_->log_options, HighsLogType::kInfo,
                 "dual-phase-1-not-solved\n");
     model_status = HighsModelStatus::kSolveError;
@@ -971,6 +980,17 @@ void HEkkDual::solvePhase2() {
     // chooseColumn has failed or excessive primal values have been
     // created Behave as "Report strange issues" below
     solve_phase = kSolvePhaseError;
+    // Solve error is opaque to users, so put in some logging
+    if (rebuild_reason == kRebuildReasonChooseColumnFail) {
+      highsLogUser(
+          ekk_instance_.options_->log_options, HighsLogType::kError,
+          "Dual simplex ratio test failed due to excessive dual values: "
+          "consider scaling down the LP objective coefficients\n");
+    } else {
+      highsLogUser(ekk_instance_.options_->log_options, HighsLogType::kError,
+                   "Dual simplex detected excessive primal values: consider "
+                   "scaling down the LP bounds\n");
+    }
     highsLogDev(ekk_instance_.options_->log_options, HighsLogType::kInfo,
                 "dual-phase-2-not-solved\n");
     model_status = HighsModelStatus::kSolveError;
@@ -1041,7 +1061,7 @@ void HEkkDual::rebuild() {
   // Note that computePrimalObjectiveValue sets
   // has_primal_objective_value
   const bool check_updated_objective_value = status.has_dual_objective_value;
-  double previous_dual_objective_value;
+  double previous_dual_objective_value = -kHighsInf;
   if (check_updated_objective_value) {
     //    debugUpdatedObjectiveValue(ekk_instance_, algorithm, solve_phase,
     //    "Before computeDual");
@@ -1254,7 +1274,7 @@ void HEkkDual::iterateTasks() {
   chooseRow();
 
   // Disable slice when too sparse
-  if (1.0 * row_ep.count / solver_num_row < 0.01) slice_PRICE = 0;
+  if (1.0 * row_ep.count * inv_solver_num_row < 0.01) slice_PRICE = 0;
 
   analysis->simplexTimerStart(Group1Clock);
   // #pragma omp parallel
@@ -1380,7 +1400,7 @@ void HEkkDual::reportRebuild(const HighsInt reason_for_rebuild) {
   analysis->rebuild_reason = reason_for_rebuild;
   analysis->rebuild_reason_string =
       ekk_instance_.rebuildReason(reason_for_rebuild);
-  analysis->invertReport();
+  if (ekk_instance_.options_->output_flag) analysis->invertReport();
   analysis->simplexTimerStop(ReportRebuildClock);
 }
 
@@ -1476,7 +1496,7 @@ void HEkkDual::chooseRow() {
   move_out = delta_primal < 0 ? -1 : 1;
   // Update the record of average row_ep (pi_p) density. This ignores
   // any BTRANs done for skipped candidates
-  const double local_row_ep_density = (double)row_ep.count / solver_num_row;
+  const double local_row_ep_density = (double)row_ep.count * inv_solver_num_row;
   ekk_instance_.updateOperationResultDensity(
       local_row_ep_density, ekk_instance_.info_.row_ep_density);
 }
@@ -1776,7 +1796,7 @@ void HEkkDual::chooseColumnSlice(HVector* row_ep) {
   analysis->simplexTimerStop(Chuzc0Clock);
 
   //  const HighsInt solver_num_row = ekk_instance_.lp_.num_row_;
-  const double local_density = 1.0 * row_ep->count / solver_num_row;
+  const double local_density = 1.0 * row_ep->count * inv_solver_num_row;
   bool use_col_price;
   bool use_row_price_w_switch;
   HighsSimplexInfo& info = ekk_instance_.info_;
@@ -1939,7 +1959,7 @@ void HEkkDual::updateFtran() {
                      analysis->pointer_serial_factor_clocks);
   if (analysis->analyse_simplex_summary_data)
     analysis->operationRecordAfter(kSimplexNlaFtran, col_aq);
-  const double local_col_aq_density = (double)col_aq.count / solver_num_row;
+  const double local_col_aq_density = (double)col_aq.count * inv_solver_num_row;
   ekk_instance_.updateOperationResultDensity(
       local_col_aq_density, ekk_instance_.info_.col_aq_density);
   // Save the pivot value computed column-wise - used for numerical checking
@@ -1980,7 +2000,8 @@ void HEkkDual::updateFtranBFRT() {
   if (time_updateFtranBFRT) {
     analysis->simplexTimerStop(FtranBfrtClock);
   }
-  const double local_col_BFRT_density = (double)col_BFRT.count / solver_num_row;
+  const double local_col_BFRT_density =
+      (double)col_BFRT.count * inv_solver_num_row;
   ekk_instance_.updateOperationResultDensity(
       local_col_BFRT_density, ekk_instance_.info_.col_BFRT_density);
 }
@@ -2021,7 +2042,7 @@ void HEkkDual::updateFtranDSE(HVector* DSE_Vector) {
     analysis->operationRecordAfter(kSimplexNlaFtranDse, *DSE_Vector);
   analysis->simplexTimerStop(FtranDseClock);
   const double local_row_DSE_density =
-      (double)DSE_Vector->count / solver_num_row;
+      (double)DSE_Vector->count * inv_solver_num_row;
   ekk_instance_.updateOperationResultDensity(
       local_row_DSE_density, ekk_instance_.info_.row_DSE_density);
 }
@@ -2522,9 +2543,11 @@ bool HEkkDual::proofOfPrimalInfeasibility() {
 }
 
 void HEkkDual::saveDualRay() {
-  ekk_instance_.status_.has_dual_ray = true;
-  ekk_instance_.info_.dual_ray_row_ = row_out;
-  ekk_instance_.info_.dual_ray_sign_ = move_out;
+  assert(row_out >= 0);
+  assert(move_out != kNoRaySign);
+  ekk_instance_.dual_ray_record_.clear();
+  ekk_instance_.dual_ray_record_.index = row_out;
+  ekk_instance_.dual_ray_record_.sign = move_out;
 }
 
 void HEkkDual::assessPhase1Optimality() {
@@ -2783,10 +2806,10 @@ bool HEkkDual::reachedExactObjectiveBound() {
         exact_dual_objective_value - objective_bound;
     std::string action;
     if (exact_dual_objective_value > objective_bound) {
-      highsLogDev(ekk_instance_.options_->log_options, HighsLogType::kDetailed,
-                  "HEkkDual::solvePhase2: %12g = Objective > ObjectiveUB\n",
-                  ekk_instance_.info_.updated_dual_objective_value,
-                  objective_bound);
+      highsLogDev(
+          ekk_instance_.options_->log_options, HighsLogType::kDetailed,
+          "HEkkDual::solvePhase2: %12g = Objective > ObjectiveUB = %12g\n",
+          ekk_instance_.info_.updated_dual_objective_value, objective_bound);
       action = "Have DualUB bailout";
       if (ekk_instance_.info_.costs_perturbed ||
           ekk_instance_.info_.costs_shifted) {

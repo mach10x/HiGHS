@@ -47,6 +47,7 @@ void solve(Highs& highs, std::string presolve, std::string solver,
     REQUIRE(iteration_count == require_iteration_count);
   }
   REQUIRE(highs.resetOptions() == HighsStatus::kOk);
+  highs.setOptionValue("output_flag", dev_run);
 }
 
 void distillation(Highs& highs) {
@@ -591,6 +592,7 @@ void singularStartingBasis(Highs& highs) {
                                     optimal_objective, dev_run));
 
   REQUIRE(highs.resetOptions() == HighsStatus::kOk);
+  highs.setOptionValue("output_flag", dev_run);
 
   special_lps.reportSolution(highs, dev_run);
 }
@@ -605,7 +607,10 @@ void unconstrained(Highs& highs) {
   lp.a_matrix_.start_ = {0, 0, 0};
   lp.a_matrix_.format_ = MatrixFormat::kColwise;
   REQUIRE(highs.passModel(lp) == HighsStatus::kOk);
-  REQUIRE(highs.setOptionValue("presolve", "off") == HighsStatus::kOk);
+  // No need to turn off presolve, since unconstrained LPs are
+  // automatically solved directly
+  //
+  //  REQUIRE(highs.setOptionValue("presolve", "off") == HighsStatus::kOk);
   REQUIRE(highs.run() == HighsStatus::kOk);
   REQUIRE(highs.getModelStatus() == HighsModelStatus::kOptimal);
   REQUIRE(highs.getObjectiveValue() == 1);

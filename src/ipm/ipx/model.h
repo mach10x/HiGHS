@@ -58,8 +58,8 @@ public:
     //  IPX_ERROR_invalid_vector
     Int Load(const Control& control, Int num_constr, Int num_var,
              const Int* Ap, const Int* Ai, const double* Ax,
-             const double* rhs, const char* constr_type, const double* obj,
-             const double* lbuser, const double* ubuser);
+             const double* rhs, const char* constr_type, const double offset,
+	     const double* obj, const double* lbuser, const double* ubuser);
     // Performs Flippo's test for deciding dualization
     bool filippoDualizationTest() const;
     // Writes statistics of input data and preprocessing to @info.
@@ -93,6 +93,9 @@ public:
     const SparseMatrix& AI() const { return AI_; }
     const SparseMatrix& AIt() const { return AIt_; }
 
+    // Returns the offset
+    const double offset() const { return offset_; }
+  
     // Returns a reference to a model vector.
     const Vector& b() const { return b_; }
     const Vector& c() const { return c_; }
@@ -207,7 +210,7 @@ private:
     //  IPX_ERROR_invalid_vector
     Int CopyInput(Int num_constr, Int num_var, const Int* Ap, const Int* Ai,
                   const double* Ax, const double* rhs, const char* constr_type,
-                  const double* obj, const double* lbuser,
+                  const double offset, const double* obj, const double* lbuser,
                   const double* ubuser);
 
     // Scales A_, scaled_obj_, scaled_rhs_, scaled_lbuser_ and scaled_ubuser_
@@ -263,11 +266,12 @@ private:
     // more than 1000 dense columns, then no columns are classified as dense.
     void FindDenseColumns();
 
-    // Prints the coefficient ranges of input data to control.Log(). Must be
-    // called after CopyInput() and before ScaleModel().
+    // Prints the coefficient ranges of input data via
+    // control.hLog(). Must be called after CopyInput() and before
+    // ScaleModel().
     void PrintCoefficientRange(const Control& control) const;
 
-    // Prints preprocessing operations to control.Log().
+    // Prints preprocessing operations via control.hLog().
     void PrintPreprocessingLog(const Control& control) const;
 
     // Applies the operations from ScaleModel() to a primal-dual point.
@@ -375,6 +379,7 @@ private:
     std::vector<char> constr_type_;
     double norm_obj_{0.0};        // Infnorm(obj) as given by user
     double norm_rhs_{0.0};        // Infnorm(rhs,lb,ub) as given by user
+    double offset_;
     Vector scaled_obj_;
     Vector scaled_rhs_;
     Vector scaled_lbuser_;

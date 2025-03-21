@@ -1,12 +1,12 @@
 # [List of options](@id option-definitions)
 
-## presolve
+## [presolve](@id option-presolve)
 - Presolve option: "off", "choose" or "on"
 - Type: string
 - Default: "choose"
 
-## solver
-- Solver option: "simplex", "choose" or "ipm". If "simplex"/"ipm" is chosen then, for a MIP (QP) the integrality constraint (quadratic term) will be ignored
+## [solver](@id option-solver)
+- Solver option: "simplex", "choose", "ipm" or "pdlp". If "simplex"/"ipm"/"pdlp" is chosen then, for a MIP (QP) the integrality constraint (quadratic term) will be ignored
 - Type: string
 - Default: "choose"
 
@@ -32,25 +32,25 @@
 - Default: "off"
 
 ## infinite\_cost
-- Limit on cost coefficient: values larger than this will be treated as infinite
+- Limit on |cost coefficient|: values greater than or equal to this will be treated as infinite
 - Type: double
 - Range: [1e+15, inf]
 - Default: 1e+20
 
 ## infinite\_bound
-- Limit on |constraint bound|: values larger than this will be treated as infinite
+- Limit on |constraint bound|: values greater than or equal to this will be treated as infinite
 - Type: double
 - Range: [1e+15, inf]
 - Default: 1e+20
 
 ## small\_matrix\_value
-- Lower limit on |matrix entries|: values smaller than this will be treated as zero
+- Lower limit on |matrix entries|: values less than or equal to this will be treated as zero
 - Type: double
 - Range: [1e-12, inf]
 - Default: 1e-09
 
 ## large\_matrix\_value
-- Upper limit on |matrix entries|: values larger than this will be treated as infinite
+- Upper limit on |matrix entries|: values greater than or equal to this will be treated as infinite
 - Type: double
 - Range: [1, inf]
 - Default: 1e+15
@@ -72,6 +72,18 @@
 - Type: double
 - Range: [1e-12, inf]
 - Default: 1e-08
+
+## primal\_residual\_tolerance
+- Primal residual tolerance
+- Type: double
+- Range: [1e-10, inf]
+- Default: 1e-07
+
+## dual\_residual\_tolerance
+- Dual residual tolerance
+- Type: double
+- Range: [1e-10, inf]
+- Default: 1e-07
 
 ## objective\_bound
 - Objective bound for termination of the dual simplex solver
@@ -97,8 +109,20 @@
 - Range: {0, 2147483647}
 - Default: 0
 
-## simplex\_strategy
-- Strategy for simplex solver 0 => Choose; 1 => Dual (serial); 2 => Dual (PAMI); 3 => Dual (SIP); 4 => Primal
+## user\_bound\_scale
+- Exponent of power-of-two bound scaling for model
+- Type: integer
+- Range: {-2147483647, 2147483647}
+- Default: 0
+
+## user\_cost\_scale
+- Exponent of power-of-two cost scaling for model
+- Type: integer
+- Range: {-2147483647, 2147483647}
+- Default: 0
+
+## [simplex\_strategy](@id option-simplex_strategy)
+- Strategy for simplex solver 0 => Choose; 1 => Dual (serial); 2 => Dual (SIP); 3 => Dual (PAMI); 4 => Primal
 - Type: integer
 - Range: {0, 4}
 - Default: 1
@@ -186,8 +210,23 @@
 - Type: boolean
 - Default: "false"
 
+## write\_presolved\_model\_file
+- Write presolved model file
+- Type: string
+- Default: ""
+
+## write\_presolved\_model\_to\_file
+- Write the presolved model to a file
+- Type: boolean
+- Default: "false"
+
 ## mip\_detect\_symmetry
 - Whether MIP symmetry should be detected
+- Type: boolean
+- Default: "true"
+
+## mip\_allow\_restart
+- Whether MIP restart is permitted
 - Type: boolean
 - Default: "true"
 
@@ -202,6 +241,12 @@
 - Type: integer
 - Range: {0, 2147483647}
 - Default: 2147483647
+
+## mip\_max\_start\_nodes
+- MIP solver max number of nodes when completing a partial MIP start
+- Type: integer
+- Range: {0, 2147483647}
+- Default: 500
 
 ## mip\_improving\_solution\_save
 - Whether improving MIP solutions should be saved
@@ -219,7 +264,7 @@
 - Default: ""
 
 ## mip\_max\_leaves
-- MIP solver max number of leave nodes
+- MIP solver max number of leaf nodes
 - Type: integer
 - Range: {0, 2147483647}
 - Default: 2147483647
@@ -284,9 +329,60 @@
 - Range: [0, inf]
 - Default: 1e-06
 
+## mip\_min\_logging\_interval
+- MIP minimum logging interval
+- Type: double
+- Range: [0, inf]
+- Default: 5
+
 ## ipm\_iteration\_limit
 - Iteration limit for IPM solver
 - Type: integer
 - Range: {0, 2147483647}
 - Default: 2147483647
+
+## pdlp\_native\_termination
+- Use native termination for PDLP solver: Default = false
+- Type: boolean
+- Default: "false"
+
+## pdlp\_scaling
+- Scaling option for PDLP solver: Default = true
+- Type: boolean
+- Default: "true"
+
+## pdlp\_iteration\_limit
+- Iteration limit for PDLP solver
+- Type: integer
+- Range: {0, 2147483647}
+- Default: 2147483647
+
+## pdlp\_e\_restart\_method
+- Restart mode for PDLP solver: 0 => none; 1 => GPU (default); 2 => CPU 
+- Type: integer
+- Range: {0, 2}
+- Default: 1
+
+## pdlp\_d\_gap\_tol
+- Duality gap tolerance for PDLP solver: Default = 1e-4
+- Type: double
+- Range: [1e-12, inf]
+- Default: 0.0001
+
+## qp\_iteration\_limit
+- Iteration limit for QP solver
+- Type: integer
+- Range: {0, 2147483647}
+- Default: 2147483647
+
+## qp\_nullspace\_limit
+- Nullspace limit for QP solver
+- Type: integer
+- Range: {0, 2147483647}
+- Default: 4000
+
+## blend\_multi\_objectives
+- Blend multiple objectives or apply lexicographically: Default = true
+- Type: boolean
+- Default: "true"
 

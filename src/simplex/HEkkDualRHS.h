@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -49,10 +46,9 @@ class HEkkDualRHS {
    * @brief Choose a set of row indices of good variables to leave the basis
    * (Multiple CHUZR)
    */
-  void chooseMultiGlobal(
-      HighsInt* chIndex,  //!< Set of indices of chosen rows
-      HighsInt* chCount,  //!< Number of chosen rows
-      HighsInt chLimit    //!< Limit on number of of chosen rows
+  void chooseMultiGlobal(HighsInt* chIndex,  //!< Set of indices of chosen rows
+                         HighsInt* chCount,  //!< Number of chosen rows
+                         HighsInt chLimit    //!< Limit on number of chosen rows
   );
 
   /**
@@ -62,7 +58,7 @@ class HEkkDualRHS {
   void chooseMultiHyperGraphAuto(
       HighsInt* chIndex,  //!< Set of indices of chosen rows
       HighsInt* chCount,  //!< Number of chosen rows
-      HighsInt chLimit    //!< Limit on number of of chosen rows
+      HighsInt chLimit    //!< Limit on number of chosen rows
   );
 
   /**
@@ -72,7 +68,7 @@ class HEkkDualRHS {
   void chooseMultiHyperGraphPart(
       HighsInt* chIndex,  //!< Set of indices of chosen rows
       HighsInt* chCount,  //!< Number of chosen rows
-      HighsInt chLimit    //!< Limit on number of of chosen rows
+      HighsInt chLimit    //!< Limit on number of chosen rows
   );
 
   /**

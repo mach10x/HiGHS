@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -15,13 +12,13 @@
 #include <cstdio>
 #include <numeric>
 
+#include "../extern/pdqsort/pdqsort.h"
 #include "mip/HighsCutPool.h"
 #include "mip/HighsDomain.h"
 #include "mip/HighsMipSolver.h"
 #include "mip/HighsMipSolverData.h"
 #include "parallel/HighsCombinable.h"
 #include "parallel/HighsParallel.h"
-#include "pdqsort/pdqsort.h"
 #include "presolve/HighsPostsolveStack.h"
 #include "util/HighsSplay.h"
 
@@ -189,7 +186,7 @@ void HighsCliqueTable::bronKerboschRecurse(BronKerboschData& data,
   if (data.stop()) return;
 
   double pivweight = -1.0;
-  CliqueVar pivot;
+  CliqueVar pivot{0, 0};
 
   for (HighsInt i = 0; i != Xlen; ++i) {
     if (X[i].weight(data.sol) > pivweight) {
@@ -1164,6 +1161,9 @@ void HighsCliqueTable::extractCliquesFromCut(const HighsMipSolver& mipsolver,
               coef = globaldom.col_upper_[col] - implcolub;
               constant = implcolub;
             } else {
+              // make sure that upper bound is not infinite to avoid adding VUB
+              // with coefficient '-kHighsInf' and constant 'kHighsInf'
+              if (globaldom.col_upper_[col] == kHighsInf) continue;
               coef = implcolub - globaldom.col_upper_[col];
               constant = globaldom.col_upper_[col];
             }
@@ -1186,6 +1186,9 @@ void HighsCliqueTable::extractCliquesFromCut(const HighsMipSolver& mipsolver,
               coef = globaldom.col_lower_[col] - implcollb;
               constant = implcollb;
             } else {
+              // make sure that lower bound is not infinite to avoid adding VLB
+              // with coefficient 'kHighsInf' and constant '-kHighsInf'
+              if (globaldom.col_lower_[col] == -kHighsInf) continue;
               coef = implcollb - globaldom.col_lower_[col];
               constant = globaldom.col_lower_[col];
             }
@@ -1813,6 +1816,35 @@ HighsCliqueTable::separateCliques(const std::vector<double>& sol,
 #endif
 }
 
+std::vector<std::vector<HighsCliqueTable::CliqueVar>>
+HighsCliqueTable::computeMaximalCliques(const std::vector<CliqueVar>& vars,
+                                        double feastol) {
+  // return if there are no variables
+  if (vars.empty())
+    return std::vector<std::vector<HighsCliqueTable::CliqueVar>>{};
+
+  // find max column index in clique variables
+  size_t maxcolindex = 0;
+  for (const auto& var : vars)
+    maxcolindex = std::max(static_cast<size_t>(var.col), maxcolindex);
+
+  // set up data
+  std::vector<double> sol;
+  sol.resize(maxcolindex + 1);
+  for (const auto& var : vars) sol[var.col] = var.val;
+  BronKerboschData data(sol);
+  data.feastol = feastol;
+
+  for (const auto& var : vars) {
+    if (colsubstituted[var.col] || colDeleted[var.col]) continue;
+    if (numCliques(var) != 0) data.P.emplace_back(var);
+  }
+
+  bronKerboschRecurse(data, data.P.size(), nullptr, 0);
+
+  return std::move(data.cliques);
+}
+
 void HighsCliqueTable::addImplications(HighsDomain& domain, HighsInt col,
                                        HighsInt val) {
   CliqueVar v(col, val);
@@ -2015,8 +2047,9 @@ void HighsCliqueTable::runCliqueMerging(HighsDomain& globaldomain,
           std::remove_if(clique.begin(), clique.end(),
                          [&](CliqueVar v) {
                            return globaldomain.isFixed(v.col) &&
-                                  int(globaldomain.col_lower_[v.col]) ==
-                                      (1 - v.val);
+                                  static_cast<int>(
+                                      globaldomain.col_lower_[v.col]) ==
+                                      static_cast<int>(1 - v.val);
                          }),
           clique.end());
     }
@@ -2184,8 +2217,9 @@ void HighsCliqueTable::runCliqueMerging(HighsDomain& globaldomain) {
             std::remove_if(extensionvars.begin(), extensionvars.end(),
                            [&](CliqueVar v) {
                              return globaldomain.isFixed(v.col) &&
-                                    int(globaldomain.col_lower_[v.col]) ==
-                                        (1 - v.val);
+                                    static_cast<int>(
+                                        globaldomain.col_lower_[v.col]) ==
+                                        static_cast<int>(1 - v.val);
                            }),
             extensionvars.end());
 

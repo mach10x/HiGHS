@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -34,6 +31,7 @@ HighsDebugStatus debugInfo(const HighsOptions& options, const HighsLp& lp,
     case HighsModelStatus::kSolveError:
     case HighsModelStatus::kPostsolveError:
     case HighsModelStatus::kModelEmpty:
+    case HighsModelStatus::kMemoryLimit:
       // Should have no info, so check this and return
       assert(!have_primal_solution);
       assert(!have_dual_solution);

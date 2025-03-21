@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -24,7 +21,7 @@
 #include "util/stringutil.h"
 
 #ifdef ZLIB_FOUND
-#include "zstr/zstr.hpp"
+#include "../extern/zstr/zstr.hpp"
 #endif
 
 using std::map;
@@ -42,8 +39,11 @@ FilereaderRetcode readMps(
     vector<HighsVarType>& integerColumn, std::string& objective_name,
     vector<std::string>& col_names, vector<std::string>& row_names,
     HighsInt& Qdim, vector<HighsInt>& Qstart, vector<HighsInt>& Qindex,
-    vector<double>& Qvalue, HighsInt& cost_row_location,
+    vector<double>& Qvalue, HighsInt& cost_row_location, bool& warning_issued,
     const HighsInt keep_n_rows) {
+  // Keep track of any warnings that are issued so that
+  // Highs::readModel can return HighsStatus::kWarning
+  warning_issued = false;
   // MPS file buffer
   numRow = 0;
   numCol = 0;
@@ -78,21 +78,21 @@ FilereaderRetcode readMps(
   highsLogDev(log_options, HighsLogType::kInfo, "readMPS: Opened file  OK\n");
   // Input buffer
   const HighsInt lmax = 128;
-  char line[lmax];
-  char flag[2] = {0, 0};
-  double data[3];
+  std::array<char, lmax> line;
+  std::array<char, 2> flag = {0, 0};
+  std::array<double, 3> data;
 
   HighsInt num_alien_entries = 0;
   HighsVarType integerCol = HighsVarType::kContinuous;
 
   // Load NAME
-  load_mpsLine(file, integerCol, lmax, line, flag, data);
+  load_mpsLine(file, integerCol, lmax, line.data(), flag.data(), data.data());
   highsLogDev(log_options, HighsLogType::kInfo, "readMPS: Read NAME    OK\n");
   // Load OBJSENSE or ROWS
-  load_mpsLine(file, integerCol, lmax, line, flag, data);
+  load_mpsLine(file, integerCol, lmax, line.data(), flag.data(), data.data());
   if (flag[0] == 'O') {
     // Found OBJSENSE
-    load_mpsLine(file, integerCol, lmax, line, flag, data);
+    load_mpsLine(file, integerCol, lmax, line.data(), flag.data(), data.data());
     std::string sense(&line[2], &line[2] + 3);
     // the sense must be "MAX" or "MIN"
     if (sense.compare("MAX") == 0) {
@@ -105,7 +105,7 @@ FilereaderRetcode readMps(
     highsLogDev(log_options, HighsLogType::kInfo,
                 "readMPS: Read OBJSENSE OK\n");
     // Load ROWS
-    load_mpsLine(file, integerCol, lmax, line, flag, data);
+    load_mpsLine(file, integerCol, lmax, line.data(), flag.data(), data.data());
   }
 
   row_names.clear();
@@ -113,7 +113,8 @@ FilereaderRetcode readMps(
   vector<char> rowType;
   map<double, int> rowIndex;
   double objName = 0;
-  while (load_mpsLine(file, integerCol, lmax, line, flag, data)) {
+  while (load_mpsLine(file, integerCol, lmax, line.data(), flag.data(),
+                      data.data())) {
     if (flag[0] == 'N' &&
         (objName == 0 || keep_n_rows == kKeepNRowsDeleteRows)) {
       // N-row: take the first as the objective and possibly ignore any others
@@ -149,7 +150,8 @@ FilereaderRetcode readMps(
   // line - field 5 non-empty. save_flag1 is used to deduce whether
   // the row name and value are from fields 5 and 6, or 3 and 4
   HighsInt save_flag1 = 0;
-  while (load_mpsLine(file, integerCol, lmax, line, flag, data)) {
+  while (load_mpsLine(file, integerCol, lmax, line.data(), flag.data(),
+                      data.data())) {
     HighsInt iRow = rowIndex[data[2]] - 1;
     std::string name = "";
     if (iRow >= 0) name = row_names[iRow];
@@ -206,19 +208,22 @@ FilereaderRetcode readMps(
   }
   Astart.push_back(Aindex.size());
 
-  if (num_alien_entries)
+  if (num_alien_entries) {
+    warning_issued = true;
     highsLogUser(log_options, HighsLogType::kWarning,
                  "COLUMNS section entries contain %8" HIGHSINT_FORMAT
                  " with row not in ROWS  "
                  "  section: ignored\n",
                  num_alien_entries);
+  }
   highsLogDev(log_options, HighsLogType::kInfo, "readMPS: Read COLUMNS OK\n");
 
   // Load RHS
   num_alien_entries = 0;
   vector<double> RHS(numRow, 0);
   save_flag1 = 0;
-  while (load_mpsLine(file, integerCol, lmax, line, flag, data)) {
+  while (load_mpsLine(file, integerCol, lmax, line.data(), flag.data(),
+                      data.data())) {
     if (data[2] != objName) {
       HighsInt iRow = rowIndex[data[2]] - 1;
       if (iRow >= 0) {
@@ -254,12 +259,14 @@ FilereaderRetcode readMps(
     }
     save_flag1 = flag[1];
   }
-  if (num_alien_entries)
+  if (num_alien_entries) {
+    warning_issued = true;
     highsLogUser(log_options, HighsLogType::kWarning,
                  "RHS     section entries contain %8" HIGHSINT_FORMAT
                  " with row not in ROWS  "
                  "  section: ignored\n",
                  num_alien_entries);
+  }
   highsLogDev(log_options, HighsLogType::kInfo, "readMPS: Read RHS     OK\n");
 
   // Load RANGES
@@ -268,7 +275,8 @@ FilereaderRetcode readMps(
   rowUpper.resize(numRow);
   if (flag[0] == 'R') {
     save_flag1 = 0;
-    while (load_mpsLine(file, integerCol, lmax, line, flag, data)) {
+    while (load_mpsLine(file, integerCol, lmax, line.data(), flag.data(),
+                        data.data())) {
       HighsInt iRow = rowIndex[data[2]] - 1;
       if (iRow >= 0) {
         if (rowType[iRow] == 'L' || (rowType[iRow] == 'E' && data[0] < 0)) {
@@ -325,12 +333,14 @@ FilereaderRetcode readMps(
         break;
     }
   }
-  if (num_alien_entries)
+  if (num_alien_entries) {
+    warning_issued = true;
     highsLogUser(log_options, HighsLogType::kWarning,
                  "RANGES  section entries contain %8" HIGHSINT_FORMAT
                  " with row not in ROWS  "
                  "  section: ignored\n",
                  num_alien_entries);
+  }
   highsLogDev(log_options, HighsLogType::kInfo, "readMPS: Read RANGES  OK\n");
 
   // Load BOUNDS
@@ -338,7 +348,8 @@ FilereaderRetcode readMps(
   colLower.assign(numCol, 0);
   colUpper.assign(numCol, kHighsInf);
   if (flag[0] == 'B') {
-    while (load_mpsLine(file, integerCol, lmax, line, flag, data)) {
+    while (load_mpsLine(file, integerCol, lmax, line.data(), flag.data(),
+                        data.data())) {
       // Find the column index associated with the name "data[2]". If
       // the name is in colIndex then the value stored is the true
       // column index plus one. Otherwise 0 will be returned.
@@ -381,6 +392,7 @@ FilereaderRetcode readMps(
   }
   // Load Hessian
   if (flag[0] == 'Q') {
+    warning_issued = true;
     highsLogUser(
         log_options, HighsLogType::kWarning,
         "Quadratic section: under development. Assumes QUADOBJ section\n");
@@ -389,7 +401,8 @@ FilereaderRetcode readMps(
     HighsInt previous_col = -1;
     bool has_diagonal = false;
     Qstart.clear();
-    while (load_mpsLine(file, integerCol, lmax, line, flag, data)) {
+    while (load_mpsLine(file, integerCol, lmax, line.data(), flag.data(),
+                        data.data())) {
       HighsInt iCol0 = colIndex[data[1]] - 1;
       std::string name0 = "";
       if (iCol0 >= 0) name0 = col_names[iCol0];
@@ -440,12 +453,14 @@ FilereaderRetcode readMps(
       if (colUpper[iCol] >= kHighsInf) colUpper[iCol] = 1;
     }
   }
-  if (num_alien_entries)
+  if (num_alien_entries) {
+    warning_issued = true;
     highsLogUser(log_options, HighsLogType::kWarning,
                  "BOUNDS  section entries contain %8" HIGHSINT_FORMAT
                  " with col not in "
                  "COLUMNS section: ignored\n",
                  num_alien_entries);
+  }
   highsLogDev(log_options, HighsLogType::kInfo, "readMPS: Read BOUNDS  OK\n");
   highsLogDev(log_options, HighsLogType::kInfo, "readMPS: Read ENDATA  OK\n");
   highsLogDev(log_options, HighsLogType::kInfo,
@@ -564,7 +579,7 @@ HighsStatus writeModelAsMps(const HighsOptions& options,
   HighsStatus row_name_status =
       normaliseNames(options.log_options, "row", lp.num_row_, local_row_names,
                      max_row_name_length);
-  if (row_name_status == HighsStatus::kError) return col_name_status;
+  if (row_name_status == HighsStatus::kError) return row_name_status;
   warning_found = row_name_status == HighsStatus::kWarning || warning_found;
 
   HighsInt max_name_length = std::max(max_col_name_length, max_row_name_length);
@@ -633,6 +648,7 @@ HighsStatus writeMps(
         "Cannot write fixed MPS with names of length (up to) %" HIGHSINT_FORMAT
         "\n",
         max_name_length);
+    fclose(file);
     return HighsStatus::kError;
   }
   assert(objective_name != "");
@@ -909,6 +925,9 @@ HighsStatus writeMps(
                 if (lb || highs_isInfinity(ub))
                   fprintf(file, " LI BOUND     %-8s  %.10g\n",
                           col_names[c_n].c_str(), lb);
+              } else {
+                // Infinite lower bound
+                fprintf(file, " MI BOUND     %-8s\n", col_names[c_n].c_str());
               }
               if (!highs_isInfinity(ub)) {
                 // Finite upper bound

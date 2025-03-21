@@ -95,7 +95,7 @@ TEST_CASE("internal-options", "[highs_options]") {
   REQUIRE(options.small_matrix_value == 0.001);
   REQUIRE(options.mps_parser_type_free);
 
-  if (dev_run) reportOptions(stdout, options.records, true);
+  if (dev_run) reportOptions(stdout, report_log_options, options.records, true);
 
   return_status = checkOptions(report_log_options, options.records);
   REQUIRE(return_status == OptionStatus::kOk);
@@ -157,7 +157,7 @@ TEST_CASE("internal-options", "[highs_options]") {
 
   if (dev_run) {
     printf("\nAfter setting allowed_matrix_scale_factor to 1\n");
-    reportOptions(stdout, options.records);
+    reportOptions(stdout, report_log_options, options.records);
   }
 
   double allowed_matrix_scale_factor_double = 1e-7;
@@ -174,7 +174,7 @@ TEST_CASE("internal-options", "[highs_options]") {
 
   if (dev_run) {
     printf("\nAfter testing HighsInt options\n");
-    reportOptions(stdout, options.records);
+    reportOptions(stdout, report_log_options, options.records);
   }
 
   // Check setting double options
@@ -231,7 +231,7 @@ TEST_CASE("internal-options", "[highs_options]") {
                           options.log_options, options.records, model_file);
   REQUIRE(return_status == OptionStatus::kUnknownOption);
 
-  if (dev_run) reportOptions(stdout, options.records);
+  if (dev_run) reportOptions(stdout, report_log_options, options.records);
 
   bool get_mps_parser_type_free;
   return_status =
@@ -496,4 +496,19 @@ TEST_CASE("highs-options", "[highs_options]") {
 
   return_status = highs.setOptionValue("time_limit", 1);
   REQUIRE(return_status == HighsStatus::kOk);
+}
+
+TEST_CASE("inf-value-options", "[highs_options]") {
+  Highs highs;
+  highs.setOptionValue("output_flag", dev_run);
+  std::string options_file =
+      std::string(HIGHS_DIR) + "/check/instances/WithInf.set";
+  REQUIRE(highs.readOptions(options_file) == HighsStatus::kOk);
+  double value;
+  highs.getOptionValue("time_limit", value);
+  REQUIRE(value == kHighsInf);
+  highs.getOptionValue("objective_bound", value);
+  REQUIRE(value == -kHighsInf);
+  highs.getOptionValue("objective_target", value);
+  REQUIRE(value == kHighsInf);
 }

@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -104,8 +101,7 @@ class HEkkPrimal {
   void getBasicPrimalInfeasibility();
   bool correctPrimal(const bool initialise = false);
   void shiftBound(const bool lower, const HighsInt iVar, const double value,
-                  const double random_value, double& bound, double& shift,
-                  const bool report = false);
+                  const double random_value, double& bound, double& shift);
   void savePrimalRay();
   HighsDebugStatus debugPrimalSimplex(const std::string message,
                                       const bool initialise = false);
@@ -178,6 +174,11 @@ class HEkkPrimal {
   HVector row_basic_feasibility_change;
   HVector col_steepest_edge;
   HighsRandom random_;  // Just for checking PSE weights
+
+  double max_max_local_primal_infeasibility_;
+  double max_max_ignored_violation_;
+  double max_max_primal_correction_;
+  HighsInt last_header_iteration_count_;
 
   const HighsInt primal_correction_strategy =
       kSimplexPrimalCorrectionStrategyAlways;

@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -25,7 +22,7 @@ struct SimplexBasis {
   // The basis for the simplex method consists of basicIndex,
   // nonbasicFlag and nonbasicMove. If HighsSimplexStatus has_basis
   // is true then it is assumed that basicIndex_ and nonbasicFlag_ are
-  // self-consistent and correpond to the dimensions of an associated
+  // self-consistent and correspond to the dimensions of an associated
   // HighsLp, but the basis matrix B is not necessarily nonsingular.
   std::vector<HighsInt> basicIndex_;
   std::vector<int8_t> nonbasicFlag_;
@@ -57,9 +54,7 @@ struct HighsSimplexStatus {
   bool has_dual_objective_value =
       false;  // The dual objective function value is known
   bool has_primal_objective_value =
-      false;                    // The dual objective function value is known
-  bool has_dual_ray = false;    // A dual unbounded ray is known
-  bool has_primal_ray = false;  // A primal unbounded ray is known
+      false;  // The dual objective function value is known
 };
 
 struct HighsSimplexInfo {
@@ -136,12 +131,6 @@ struct HighsSimplexInfo {
   std::vector<double> backtracking_basis_workLowerShift_;
   std::vector<double> backtracking_basis_workUpperShift_;
   std::vector<double> backtracking_basis_edge_weight_;
-
-  // Dual and primal ray vectors
-  HighsInt dual_ray_row_;
-  HighsInt dual_ray_sign_;
-  HighsInt primal_ray_col_;
-  HighsInt primal_ray_sign_;
 
   // Options from HighsOptions for the simplex solver
   HighsInt simplex_strategy;
@@ -261,4 +250,12 @@ struct HighsSimplexBadBasisChangeRecord {
   double save_value;
 };
 
+struct HighsRayRecord {
+  HighsInt index;
+  HighsInt sign;
+  std::vector<double> value;
+  HighsRayRecord getRayRecord() const;
+  void setRayRecord(const HighsRayRecord& from_record);
+  void clear();
+};
 #endif /* SIMPLEX_SIMPLEXSTRUCT_H_ */

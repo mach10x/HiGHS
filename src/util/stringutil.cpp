@@ -2,16 +2,15 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "util/stringutil.h"
 
+#include <algorithm>  // for std::transform
 #include <cassert>
 
+/*
 void strRemoveWhitespace(char* str) {
   char* dest = str;
   do
@@ -58,6 +57,24 @@ void strTrim(char* str) {
   for (i = begin; i <= end; i++) str[i - begin] = str[i];
 
   str[i - begin] = '\0';  // Null terminate string.
+}
+*/
+
+// std::string& str_tolower(std::string str) {
+//   std::transform(str.begin(), str.end(), str.begin(),
+//                  [](unsigned char c) { return std::tolower(c); }  // correct
+//   );
+//   return str;
+// }
+
+void tolower(std::string& str) {
+  std::transform(str.begin(), str.end(), str.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+}
+
+void toupper(std::string& str) {
+  std::transform(str.begin(), str.end(), str.begin(),
+                 [](unsigned char c) { return std::toupper(c); });
 }
 
 std::string& ltrim(std::string& str, const std::string& chars) {

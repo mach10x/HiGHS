@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2023 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -50,6 +47,8 @@ class HighsLp {
   HighsNameHash col_hash_;
   HighsNameHash row_hash_;
 
+  HighsInt user_bound_scale_;
+  HighsInt user_cost_scale_;
   HighsScale scale_;
   bool is_scaled_;
   bool is_moved_;
@@ -59,7 +58,9 @@ class HighsLp {
 
   bool operator==(const HighsLp& lp) const;
   bool equalButForNames(const HighsLp& lp) const;
+  bool equalButForScalingAndNames(const HighsLp& lp) const;
   bool equalNames(const HighsLp& lp) const;
+  bool equalScaling(const HighsLp& lp) const;
   bool isMip() const;
   bool hasSemiVariables() const;
   bool hasInfiniteCost(const double infinite_cost) const;
@@ -77,9 +78,21 @@ class HighsLp {
   void applyScale();
   void unapplyScale();
   void moveBackLpAndUnapplyScaling(HighsLp& lp);
+  bool userBoundScaleOk(const HighsInt user_bound_scale,
+                        const double infinite_bound) const;
+  void userBoundScale(const HighsInt user_bound_scale);
+  bool userCostScaleOk(const HighsInt user_cost_scale,
+                       const double infinite_cost) const;
+  void userCostScale(const HighsInt user_cost_scale);
   void exactResize();
   void addColNames(const std::string name, const HighsInt num_new_col = 1);
   void addRowNames(const std::string name, const HighsInt num_new_row = 1);
+  void deleteColsFromVectors(HighsInt& new_num_col,
+                             const HighsIndexCollection& index_collection);
+  void deleteRowsFromVectors(HighsInt& new_num_row,
+                             const HighsIndexCollection& index_collection);
+  void deleteCols(const HighsIndexCollection& index_collection);
+  void deleteRows(const HighsIndexCollection& index_collection);
   void unapplyMods();
   void clear();
 };
