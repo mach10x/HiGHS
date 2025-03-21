@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -18,7 +15,7 @@
 // Highs_mipCall or Highs_qpCall, and these methods return the
 // appropriate solution information
 //
-// For sophisticated applications, where esoteric solutiuon
+// For sophisticated applications, where esoteric solution
 // information is needed, or if a sequence of modified models need to
 // be solved, use the Highs_create method to generate a pointer to an
 // instance of the C++ Highs class, and then use any of a large number
@@ -72,6 +69,7 @@ const HighsInt kHighsPresolveStatusReducedToEmpty = 4;
 const HighsInt kHighsPresolveStatusTimeout = 5;
 const HighsInt kHighsPresolveStatusNullError = 6;
 const HighsInt kHighsPresolveStatusOptionsError = 7;
+const HighsInt kHighsPresolveStatusOutOfMemory = 8;
 
 const HighsInt kHighsModelStatusNotset = 0;
 const HighsInt kHighsModelStatusLoadError = 1;
@@ -107,6 +105,32 @@ const HighsInt kHighsCallbackMipLogging = 5;
 const HighsInt kHighsCallbackMipInterrupt = 6;
 const HighsInt kHighsCallbackMipGetCutPool = 7;
 const HighsInt kHighsCallbackMipDefineLazyConstraints = 8;
+
+const char* const kHighsCallbackDataOutLogTypeName = "log_type";
+const char* const kHighsCallbackDataOutRunningTimeName = "running_time";
+const char* const kHighsCallbackDataOutSimplexIterationCountName =
+    "simplex_iteration_count";
+const char* const kHighsCallbackDataOutIpmIterationCountName =
+    "ipm_iteration_count";
+const char* const kHighsCallbackDataOutPdlpIterationCountName =
+    "pdlp_iteration_count";
+const char* const kHighsCallbackDataOutObjectiveFunctionValueName =
+    "objective_function_value";
+const char* const kHighsCallbackDataOutMipNodeCountName = "mip_node_count";
+const char* const kHighsCallbackDataOutMipTotalLpIterationsName =
+    "mip_total_lp_iterations";
+const char* const kHighsCallbackDataOutMipPrimalBoundName = "mip_primal_bound";
+const char* const kHighsCallbackDataOutMipDualBoundName = "mip_dual_bound";
+const char* const kHighsCallbackDataOutMipGapName = "mip_gap";
+const char* const kHighsCallbackDataOutMipSolutionName = "mip_solution";
+const char* const kHighsCallbackDataOutCutpoolNumColName = "cutpool_num_col";
+const char* const kHighsCallbackDataOutCutpoolNumCutName = "cutpool_num_cut";
+const char* const kHighsCallbackDataOutCutpoolNumNzName = "cutpool_num_nz";
+const char* const kHighsCallbackDataOutCutpoolStartName = "cutpool_start";
+const char* const kHighsCallbackDataOutCutpoolIndexName = "cutpool_index";
+const char* const kHighsCallbackDataOutCutpoolValueName = "cutpool_value";
+const char* const kHighsCallbackDataOutCutpoolLowerName = "cutpool_lower";
+const char* const kHighsCallbackDataOutCutpoolUpperName = "cutpool_upper";
 
 #ifdef __cplusplus
 extern "C" {
@@ -202,11 +226,14 @@ HighsInt Highs_mipCall(const HighsInt num_col, const HighsInt num_row,
  * @param q_format  The format of the Hessian matrix in the form of a
  *                  `kHighsHessianStatus` constant. If q_num_nz > 0, this must
  *                  be `kHighsHessianFormatTriangular`.
- * @param q_start   The Hessian matrix is provided in the same format as the
- *                  constraint matrix, using `q_start`, `q_index`, and `q_value`
- *                  in the place of `a_start`, `a_index`, and `a_value`.
+ * @param q_start   The Hessian matrix is provided to HiGHS as the lower
+ *                  triangular component in compressed sparse column form
+ *                  (or, equivalently, as the upper triangular component
+ *                  in compressed sparse row form). The sparse matrix consists
+ *                  of three arrays, `q_start`, `q_index`, and `q_value`.
+ *                  `q_start` is an array of length [num_col].
  * @param q_index   An array of length [q_num_nz] with indices of matrix
- *                  sentries.
+ *                  entries.
  * @param q_value   An array of length [q_num_nz] with values of matrix entries.
  *
  * @returns A `kHighsStatus` constant indicating whether the call succeeded.
@@ -277,13 +304,6 @@ HighsInt Highs_versionPatch(void);
 const char* Highs_githash(void);
 
 /**
- * Return the HiGHS compilation date.
- *
- * @returns Thse HiGHS compilation date.
- */
-const char* Highs_compilationDate(void);
-
-/**
  * Read a model from `filename` into `highs`.
  *
  * @param highs     A pointer to the Highs instance.
@@ -302,6 +322,16 @@ HighsInt Highs_readModel(void* highs, const char* filename);
  * @returns A `kHighsStatus` constant indicating whether the call succeeded.
  */
 HighsInt Highs_writeModel(void* highs, const char* filename);
+
+/**
+ * Write the presolved model in `highs` to `filename`.
+ *
+ * @param highs     A pointer to the Highs instance.
+ * @param filename  The filename to write.
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+HighsInt Highs_writePresolvedModel(void* highs, const char* filename);
 
 /**
  * Reset the options and then call `clearModel`.
@@ -468,10 +498,13 @@ HighsInt Highs_passMip(void* highs, const HighsInt num_col,
  * @param a_index     An array of length [num_nz] with indices of matrix
  *                    entries.
  * @param a_value     An array of length [num_nz] with values of matrix entries.
- * @param q_start     The Hessian matrix is provided in the same format as the
- *                    constraint matrix, using `q_start`, `q_index`, and
- *                    `q_value` in the place of `a_start`, `a_index`, and
- *                    `a_value`. If the model is linear, pass NULL.
+ * @param q_start     The Hessian matrix is provided to HiGHS as the lower
+ *                    triangular component in compressed sparse column form
+ *                    (or, equivalently, as the upper triangular component
+ *                    in compressed sparse row form). The sparse matrix consists
+ *                    of three arrays, `q_start`, `q_index`, and `q_value`.
+ *                    `q_start` is an array of length [num_col]. If the model
+ *                    is linear, pass NULL.
  * @param q_index     An array of length [q_num_nz] with indices of matrix
  *                    entries. If the model is linear, pass NULL.
  * @param q_value     An array of length [q_num_nz] with values of matrix
@@ -501,11 +534,16 @@ HighsInt Highs_passModel(void* highs, const HighsInt num_col,
  * @param num_nz    The number of non-zero elements in the Hessian matrix.
  * @param format    The format of the Hessian matrix as a `kHighsHessianFormat`
  *                  constant. This must be `kHighsHessianFormatTriangular`.
- * @param start     The Hessian matrix is provided to HiGHS as the upper
- *                  triangular component in compressed sparse column form. The
- *                  sparse matrix consists of three arrays, `start`, `index`,
- *                  and `value`. `start` is an array of length [num_col]
- *                  containing the starting index of each column in `index`.
+ * @param start     The Hessian matrix is provided to HiGHS as the lower
+ *                  triangular component in compressed sparse column form
+ *                  (or, equivalently, as the upper triangular component
+ *                  in compressed sparse row form), using `q_start`, `q_index`,
+ *                  and `q_value`.The Hessian matrix is provided to HiGHS as the
+ *                  lower triangular component in compressed sparse column form.
+ *                  The sparse matrix consists of three arrays, `start`,
+ *                  `index`, and `value`. `start` is an array of length
+ *                  [num_col] containing the starting index of each column in
+ *                  `index`.
  * @param index     An array of length [num_nz] with indices of matrix entries.
  * @param value     An array of length [num_nz] with values of matrix entries.
  *
@@ -516,6 +554,72 @@ HighsInt Highs_passHessian(void* highs, const HighsInt dim,
                            const HighsInt* start, const HighsInt* index,
                            const double* value);
 
+/**
+ * Passes multiple linear objective data to HiGHS, clearing any such
+ * data already in HiGHS
+ *
+ * @param highs         A pointer to the Highs instance.
+ * @param weight        A pointer to the weights of the linear objective, with
+ *                      its positive/negative sign determining whether it is
+ *                      minimized or maximized during lexicographic optimization
+ * @param offset        A pointer to the objective offsets
+ * @param coefficients  A pointer to the objective coefficients
+ * @param abs_tolerance A pointer to the absolute tolerances used when
+ *                      constructing objective constraints during lexicographic
+ *                      optimization
+ * @param rel_tolerance A pointer to the relative tolerances used when
+ *                      constructing objective constraints during lexicographic
+ *                      optimization
+ * @param priority      A pointer to the priorities of the objectives during
+ *                      lexicographic optimization
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+
+HighsInt Highs_passLinearObjectives(const void* highs,
+                                    const HighsInt num_linear_objective,
+                                    const double* weight, const double* offset,
+                                    const double* coefficients,
+                                    const double* abs_tolerance,
+                                    const double* rel_tolerance,
+                                    const HighsInt* priority);
+
+/**
+ * Adds linear objective data to HiGHS
+ *
+ * @param highs         A pointer to the Highs instance.
+ * @param weight        The weight of the linear objective, with its
+ *                      positive/negative sign determining whether it is
+ *                      minimized or maximized during lexicographic
+ *                      optimization
+ * @param offset        The objective offset
+ * @param coefficients  A pointer to the objective coefficients
+ * @param abs_tolerance The absolute tolerance used when constructing an
+ *                      objective constraint during lexicographic optimization
+ * @param rel_tolerance The relative tolerance used when constructing an
+ *                      objective constraint during lexicographic optimization
+ * @param priority      The priority of this objective during lexicographic
+ *                      optimization
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+
+HighsInt Highs_addLinearObjective(const void* highs, const double weight,
+                                  const double offset,
+                                  const double* coefficients,
+                                  const double abs_tolerance,
+                                  const double rel_tolerance,
+                                  const HighsInt priority);
+
+/**
+ * Clears any multiple linear objective data in HiGHS
+ *
+ * @param highs A pointer to the Highs instance.
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+
+HighsInt Highs_clearLinearObjectives(const void* highs);
 /**
  * Pass the name of a row.
  *
@@ -539,6 +643,16 @@ HighsInt Highs_passRowName(const void* highs, const HighsInt row,
  */
 HighsInt Highs_passColName(const void* highs, const HighsInt col,
                            const char* name);
+
+/**
+ * Pass the name of the model.
+ *
+ * @param highs A pointer to the Highs instance.
+ * @param name  The name of the model.
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+HighsInt Highs_passModelName(const void* highs, const char* name);
 
 /**
  * Read the option values from file.
@@ -864,11 +978,13 @@ HighsInt Highs_getBasis(const void* highs, HighsInt* col_status,
 HighsInt Highs_getModelStatus(const void* highs);
 
 /**
- * Get an unbounded dual ray that is a certificate of primal infeasibility.
+ * Indicates whether a dual ray that is a certificate of primal
+ * infeasibility currently exists, and (at the expense of solving an
+ * LP) gets it if it does not and dual_ray_value is not nullptr.
  *
  * @param highs             A pointer to the Highs instance.
- * @param has_dual_ray      A pointer to an int to store 1 if the dual ray
- *                          exists.
+ * @param has_dual_ray      A pointer to an int to store 1 if a dual ray
+ *                          currently exists.
  * @param dual_ray_value    An array of length [num_row] filled with the
  *                          unbounded ray.
  *
@@ -878,7 +994,28 @@ HighsInt Highs_getDualRay(const void* highs, HighsInt* has_dual_ray,
                           double* dual_ray_value);
 
 /**
- * Get an unbounded primal ray that is a certificate of dual infeasibility.
+ * Indicates whether a dual unboundedness direction (corresponding to a
+ * certificate of primal infeasibility) exists, and (at the expense of
+ * solving an LP) gets it if it does not and
+ * dual_unboundedness_direction is not nullptr
+ *
+ * @param highs                                   A pointer to the Highs
+ *                                                instance.
+ * @param has_dual_unboundedness_direction        A pointer to an int to store 1
+ *                                                if the dual unboundedness
+ *                                                direction exists.
+ * @param dual_unboundedness_direction_value      An array of length [num_col]
+ *                                                filled with the unboundedness
+ *                                                direction.
+ */
+HighsInt Highs_getDualUnboundednessDirection(
+    const void* highs, HighsInt* has_dual_unboundedness_direction,
+    double* dual_unboundedness_direction_value);
+
+/**
+ * Indicates whether a primal ray that is a certificate of primal
+ * unboundedness currently exists, and (at the expense of solving an
+ * LP) gets it if it does not and primal_ray_value is not nullptr.
  *
  * @param highs             A pointer to the Highs instance.
  * @param has_primal_ray    A pointer to an int to store 1 if the primal ray
@@ -1110,6 +1247,19 @@ HighsInt Highs_setSolution(void* highs, const double* col_value,
                            const double* row_dual);
 
 /**
+ * Set a partial primal solution by passing values for a set of variables
+ *
+ * @param highs       A pointer to the Highs instance.
+ * @param num_entries Number of variables in the set
+ * @param index       Indices of variables in the set
+ * @param value       Values of variables in the set
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+HighsInt Highs_setSparseSolution(void* highs, const HighsInt num_entries,
+                                 const HighsInt* index, const double* value);
+
+/**
  * Set the callback method to use for HiGHS
  *
  * @param highs              A pointer to the Highs instance.
@@ -1275,6 +1425,25 @@ HighsInt Highs_addRows(void* highs, const HighsInt num_new_row,
                        const double* lower, const double* upper,
                        const HighsInt num_new_nz, const HighsInt* starts,
                        const HighsInt* index, const double* value);
+
+/**
+ * Ensure that the constraint matrix of the incumbent model is stored
+ * column-wise.
+ *
+ * @param highs         A pointer to the Highs instance.
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+HighsInt Highs_ensureColwise(void* highs);
+
+/**
+ * Ensure that the constraint matrix of the incumbent model is stored row-wise.
+ *
+ * @param highs         A pointer to the Highs instance.
+ *
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+HighsInt Highs_ensureRowwise(void* highs);
 
 /**
  * Change the objective sense of the model.
@@ -1663,7 +1832,7 @@ HighsInt Highs_getColsByMask(const void* highs, const HighsInt* mask,
  * @param from_row      The first row for which to query data for.
  * @param to_row        The last row (inclusive) for which to query data for.
  * @param num_row       An integer to be populated with the number of rows got
- *                      from the smodel.
+ *                      from the model.
  * @param lower         An array of size [to_row - from_row + 1] for the row
  *                      lower bounds.
  * @param upper         An array of size [to_row - from_row + 1] for the row
@@ -2122,6 +2291,38 @@ HighsInt Highs_getRanging(
     HighsInt* row_bound_dn_in_var, HighsInt* row_bound_dn_ou_var);
 
 /**
+ * Compute the solution corresponding to a (possibly weighted) sum of
+ * (allowable) infeasibilities in an LP/MIP.
+ *
+ * If local penalties are not defined, pass NULL, and the global
+ * penalty will be used. Negative penalty values imply that the bound
+ * or RHS value cannot be violated
+ *
+ * @param highs                             A pointer to the Highs instance.
+ * @param const double global_lower_penalty The penalty for violating lower
+ * bounds on variables
+ * @param const double global_upper_penalty The penalty for violating upper
+ * bounds on variables
+ * @param const double global_rhs_penalty   The penalty for violating constraint
+ * RHS values
+ * @param const double* local_lower_penalty The penalties for violating specific
+ * lower bounds on variables
+ * @param const double* local_upper_penalty The penalties for violating specific
+ * upper bounds on variables
+ * @param const double* local_rhs_penalty   The penalties for violating specific
+ * constraint RHS values
+ * @returns A `kHighsStatus` constant indicating whether the call succeeded.
+ */
+
+HighsInt Highs_feasibilityRelaxation(void* highs,
+                                     const double global_lower_penalty,
+                                     const double global_upper_penalty,
+                                     const double global_rhs_penalty,
+                                     const double* local_lower_penalty,
+                                     const double* local_upper_penalty,
+                                     const double* local_rhs_penalty);
+
+/**
  * Releases all resources held by the global scheduler instance.
  *
  * It is not thread-safe to call this function while calling `Highs_run` or one
@@ -2148,9 +2349,28 @@ HighsInt Highs_getRanging(
  */
 void Highs_resetGlobalScheduler(const HighsInt blocking);
 
+/**
+ * Get a void* pointer to a callback data item
+ *
+ * @param data_out      A pointer to the HighsCallbackDataOut instance.
+ * @param item_name     The name of the item.
+ *
+ * @returns A void* pointer to the callback data item, or NULL if item_name not
+ * valid
+ */
+const void* Highs_getCallbackDataOutItem(const HighsCallbackDataOut* data_out,
+                                         const char* item_name);
+
 // *********************
 // * Deprecated methods*
 // *********************
+
+/**
+ * Return the HiGHS compilation date.
+ *
+ * @returns Thse HiGHS compilation date.
+ */
+const char* Highs_compilationDate(void);
 
 // These are deprecated because they don't follow the style guide. Constants
 // must begin with `k`.

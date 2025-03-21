@@ -129,6 +129,7 @@ else()
   # Define library in modern CMake using target_*()
   # No interfaces (apart from c); No ipx; New (short) ctest instances.
   add_library(highs)
+
   add_library(${PROJECT_NAMESPACE}::highs ALIAS highs)
 
   if(${BUILD_SHARED_LIBS})
@@ -140,9 +141,11 @@ else()
   endif()
 
   set_target_properties(highs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
   if(APPLE)
-    set_target_properties(highs PROPERTIES
-      INSTALL_RPATH "@loader_path")
+      set_target_properties(highs PROPERTIES INSTALL_RPATH "@loader_path")
+  elseif (UNIX)
+      set_target_properties(highs PROPERTIES INSTALL_RPATH "$ORIGIN")
   endif()
 
   target_include_directories(highs PUBLIC
@@ -150,6 +153,8 @@ else()
     $<BUILD_INTERFACE:${HIGHS_BINARY_DIR}>
     # $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/highs>
   )
+
+  target_include_directories(highs PUBLIC "${CMAKE_CUDA_PATH}/include")
 
   # target_include_directories(highs PRIVATE
   #   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/interfaces>
@@ -175,6 +180,32 @@ else()
   #   $<BUILD_INTERFACE:${HIGHS_SOURCE_DIR}/extern/pdqsort>)
 
   target_sources(highs PRIVATE ${sources} ${headers} ${win_version_file})
+  
+  # Optional Cuda 
+  if (CUPDLP_GPU)
+  #   enable_language(CXX CUDA)
+  #   target_sources(highs PRIVATE ${cuda_sources})
+
+  #   set_target_properties(highs PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+  #   target_link_libraries(highs ${CUDA_LIBRARY} m)
+  
+    # target_include_directories(highs PUBLIC "/usr/local/include")
+
+    set(CUPDLP_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/src/pdlp/cupdlp/")
+
+    add_subdirectory(pdlp/cupdlp/cuda)
+
+    if (WIN32)
+      target_link_libraries(highs cudalin ${CUDA_LIBRARY})
+    else()
+      target_link_libraries(highs cudalin ${CUDA_LIBRARY} m)
+    endif()
+    
+    set_target_properties(highs PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+  endif()
+
   target_include_directories(highs PRIVATE ${include_dirs})
 
   if(MSVC)
@@ -221,14 +252,18 @@ else()
   endif()
 
 
-
   if(ZLIB AND ZLIB_FOUND)
     target_include_directories(highs PRIVATE
       $<BUILD_INTERFACE:${HIGHS_SOURCE_DIR}/extern/zstr>
     )
     target_link_libraries(highs ZLIB::ZLIB)
-    set(CONF_DEPENDENCIES "include(CMakeFindDependencyMacro)\nfind_dependency(ZLIB)")
+    set(CONF_DEPS 
+      "include(CMakeFindDependencyMacro)\nfind_dependency(Threads)\nfind_dependency(ZLIB)")
+    set(CONF_DEPENDENCIES ${CONF_DEPS})
+  else() 
+    set(CONF_DEPENDENCIES "include(CMakeFindDependencyMacro)\nfind_dependency(Threads)")
   endif()
+    
 
   # # on UNIX system the 'lib' prefix is automatically added
   # set_target_properties(highs PROPERTIES
@@ -287,6 +322,46 @@ else()
   install(FILES "${HIGHS_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/highs.pc"
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
+
+  if (BUILD_DOTNET)
+  
+      # see: https://docs.microsoft.com/en-us/dotnet/core/rid-catalog
+      if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)")
+        set(DOTNET_PLATFORM arm64)
+      else()
+        set(DOTNET_PLATFORM x64)
+      endif()
+
+      if(APPLE)
+        set(DOTNET_RID osx-${DOTNET_PLATFORM})
+      elseif(UNIX)
+        set(DOTNET_RID linux-${DOTNET_PLATFORM})
+      elseif(WIN32)
+        set(DOTNET_RID win-${DOTNET_PLATFORM})
+      else()
+        message(FATAL_ERROR "Unsupported system !")
+      endif()
+      message(STATUS ".Net RID: ${DOTNET_RID}")
+
+      set(DOTNET_PROJECT Highs.Native)
+      set(DOTNET_PROJECT_DIR ${PROJECT_BINARY_DIR}/dotnet/${DOTNET_PROJECT})
+      file(MAKE_DIRECTORY ${DOTNET_PROJECT_DIR}/runtimes/${DOTNET_RID}/native)
+
+      if (APPLE)
+        set(TARGET_FILE_NAME "highs.dylib")
+      elseif(UNIX)
+        set(TARGET_FILE_NAME "highs.so")
+      elseif(WIN32)
+        set(TARGET_FILE_NAME "highs.dll")
+      endif()
+
+      add_custom_command(TARGET highs POST_BUILD 
+        COMMAND "${CMAKE_COMMAND}" -E copy 
+          "$<TARGET_FILE:highs>"
+        ${DOTNET_PROJECT_DIR}/runtimes/${DOTNET_RID}/native/${TARGET_FILE_NAME}
+        COMMENT "Copying to output directory")
+  endif()
+
 endif()
 
 if(FORTRAN_FOUND)
@@ -321,6 +396,7 @@ if(CSHARP_FOUND)
   set(csharpsources
     interfaces/highs_csharp_api.cs)
   add_library(HighsCsharp SHARED interfaces/highs_csharp_api.cs)
+  add_library(${PROJECT_NAMESPACE}::HighsCsharp ALIAS HighsCsharp)
   target_compile_options(HighsCsharp PUBLIC "/unsafe")
   add_executable(csharpexample ../examples/call_highs_from_csharp.cs)
   target_compile_options(csharpexample PUBLIC "/unsafe")

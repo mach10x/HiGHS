@@ -27,7 +27,7 @@ set(cupdlp_sources
   pdlp/cupdlp/cupdlp_linalg.c
   pdlp/cupdlp/cupdlp_proj.c
   pdlp/cupdlp/cupdlp_restart.c
-  pdlp/cupdlp/cupdlp_scaling_cuda.c
+  pdlp/cupdlp/cupdlp_scaling.c
   pdlp/cupdlp/cupdlp_solver.c
   pdlp/cupdlp/cupdlp_step.c
   pdlp/cupdlp/cupdlp_utils.c)
@@ -38,10 +38,17 @@ set(cupdlp_headers
   pdlp/cupdlp/cupdlp_linalg.h
   pdlp/cupdlp/cupdlp_proj.h
   pdlp/cupdlp/cupdlp_restart.h
-  pdlp/cupdlp/cupdlp_scaling_cuda.h
+  pdlp/cupdlp/cupdlp_scaling.h
   pdlp/cupdlp/cupdlp_solver.h
   pdlp/cupdlp/cupdlp_step.h
   pdlp/cupdlp/cupdlp_utils.c)
+
+set(cuda_sources
+  pdlp/cupdlp/cuda/cupdlp_cuda_kernels.cu
+  pdlp/cupdlp/cuda/cupdlp_cuda_kernels.cuh
+  pdlp/cupdlp/cuda/cupdlp_cudalinalg.cuh
+  pdlp/cupdlp/cuda/cupdlp_cudalinalg.cu)
+
 
 set(basiclu_sources
   ipm/basiclu/basiclu_factorize.c
@@ -128,7 +135,7 @@ set(ipx_sources
   ipm/ipx/symbolic_invert.cc
   ipm/ipx/timer.cc
   ipm/ipx/utils.cc)
-  
+
 set(ipx_headers
   ipm/ipx/basiclu_kernel.h
   ipm/ipx/basiclu_wrapper.h
@@ -184,8 +191,10 @@ set(highs_sources
     lp_data/Highs.cpp
     lp_data/HighsCallback.cpp
     lp_data/HighsDebug.cpp
+    lp_data/HighsIis.cpp
     lp_data/HighsInfo.cpp
     lp_data/HighsInfoDebug.cpp
+    lp_data/HighsDeprecated.cpp
     lp_data/HighsInterface.cpp
     lp_data/HighsLp.cpp
     lp_data/HighsLpUtils.cpp
@@ -207,6 +216,7 @@ set(highs_sources
     mip/HighsImplications.cpp
     mip/HighsLpAggregator.cpp
     mip/HighsLpRelaxation.cpp
+    mip/HighsMipAnalysis.cpp
     mip/HighsMipSolver.cpp
     mip/HighsMipSolverData.cpp
     mip/HighsModkSeparator.cpp
@@ -301,6 +311,7 @@ set(highs_headers
     lp_data/HighsCallback.h
     lp_data/HighsCallbackStruct.h
     lp_data/HighsDebug.h
+    lp_data/HighsIis.h
     lp_data/HighsInfo.h
     lp_data/HighsInfoDebug.h
     lp_data/HighsLp.h
@@ -309,7 +320,6 @@ set(highs_headers
     lp_data/HighsModelUtils.h
     lp_data/HighsOptions.h
     lp_data/HighsRanging.h
-    lp_data/HighsRuntimeOptions.h
     lp_data/HighsSolution.h
     lp_data/HighsSolutionDebug.h
     lp_data/HighsSolve.h
@@ -327,6 +337,7 @@ set(highs_headers
     mip/HighsImplications.h
     mip/HighsLpAggregator.h
     mip/HighsLpRelaxation.h
+    mip/HighsMipAnalysis.h
     mip/HighsMipSolver.h
     mip/HighsMipSolverData.h
     mip/HighsModkSeparator.h
@@ -341,6 +352,7 @@ set(highs_headers
     mip/HighsSeparator.h
     mip/HighsTableauSeparator.h
     mip/HighsTransformedLp.h
+    mip/MipTimer.h
     model/HighsHessian.h
     model/HighsHessianUtils.h
     model/HighsModel.h
@@ -372,15 +384,15 @@ set(highs_headers
     qpsolver/devexpricing.hpp
     qpsolver/eventhandler.hpp
     qpsolver/factor.hpp
+    qpsolver/feasibility_bounded.hpp
     qpsolver/feasibility_highs.hpp
-    qpsolver/feasibility_quass.hpp
-    qpsolver/feasibility.hpp
     qpsolver/gradient.hpp
     qpsolver/instance.hpp
     qpsolver/matrix.hpp
     qpsolver/perturbation.hpp
     qpsolver/pricing.hpp
     qpsolver/qpconst.hpp
+    qpsolver/qpvector.hpp
     qpsolver/quass.hpp
     qpsolver/ratiotest.hpp
     qpsolver/runtime.hpp
@@ -389,7 +401,6 @@ set(highs_headers
     qpsolver/snippets.hpp
     qpsolver/statistics.hpp
     qpsolver/steepestedgepricing.hpp
-    qpsolver/vector.hpp
     simplex/HApp.h
     simplex/HEkk.h
     simplex/HEkkDual.h
@@ -422,6 +433,7 @@ set(highs_headers
     util/HighsMatrixPic.h
     util/HighsMatrixSlice.h
     util/HighsMatrixUtils.h
+    util/HighsMemoryAllocation.h
     util/HighsRandom.h
     util/HighsRbTree.h
     util/HighsSort.h

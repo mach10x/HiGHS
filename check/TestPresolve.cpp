@@ -575,3 +575,100 @@ TEST_CASE("postsolve-reduced-to-empty", "[highs_test_presolve]") {
   REQUIRE(highs.getInfo().num_primal_infeasibilities == 0);
   REQUIRE(highs.getInfo().num_dual_infeasibilities == 0);
 }
+
+TEST_CASE("write-presolved-model", "[highs_test_presolve]") {
+  std::string presolved_model_file = "temp.mps";
+  std::string model_file =
+      std::string(HIGHS_DIR) + "/check/instances/afiro.mps";
+  Highs highs;
+  highs.setOptionValue("output_flag", dev_run);
+  REQUIRE(highs.readModel(model_file) == HighsStatus::kOk);
+  highs.presolve();
+  highs.writePresolvedModel(presolved_model_file);
+  // Read and solve the presolved model using a new Highs instance
+  Highs highs1;
+  highs1.setOptionValue("output_flag", dev_run);
+  highs1.readModel(presolved_model_file);
+  highs1.run();
+  // Extract the optimal solution and basis
+  HighsSolution solution = highs1.getSolution();
+  HighsBasis basis = highs1.getBasis();
+  // Perform postsolve using the optimal solution and basis for the
+  // presolved model
+  highs.postsolve(solution, basis);
+  // The solution should be optimal, so no solver is run, and
+  // simplex_iteration_count is -1
+  REQUIRE(highs.getInfo().simplex_iteration_count == -1);
+  std::remove(presolved_model_file.c_str());
+}
+
+TEST_CASE("presolve-slacks", "[highs_test_presolve]") {
+  // This LP reduces to empty, because the equation is a doubleton
+  HighsLp lp;
+  lp.num_col_ = 2;
+  lp.num_row_ = 1;
+  lp.col_cost_ = {1, 0};
+  lp.col_lower_ = {0, 0};
+  lp.col_upper_ = {kHighsInf, kHighsInf};
+  lp.row_lower_ = {1};
+  lp.row_upper_ = {1};
+  lp.a_matrix_.start_ = {0, 1, 2};
+  lp.a_matrix_.index_ = {0, 0};
+  lp.a_matrix_.value_ = {1, 1};
+  Highs h;
+  h.setOptionValue("output_flag", dev_run);
+  REQUIRE(h.passModel(lp) == HighsStatus::kOk);
+  REQUIRE(h.presolve() == HighsStatus::kOk);
+  REQUIRE(h.getPresolvedLp().num_col_ == 0);
+  REQUIRE(h.getPresolvedLp().num_row_ == 0);
+
+  lp.num_col_ = 4;
+  lp.num_row_ = 2;
+  lp.col_cost_ = {-10, -25, 0, 0};
+  lp.col_lower_ = {0, 0, 0, 0};
+  lp.col_upper_ = {kHighsInf, kHighsInf, kHighsInf, kHighsInf};
+  lp.row_lower_ = {80, 120};
+  lp.row_upper_ = {80, 120};
+  lp.a_matrix_.start_ = {0, 2, 4, 5, 6};
+  lp.a_matrix_.index_ = {0, 1, 0, 1, 0, 1};
+  lp.a_matrix_.value_ = {1, 1, 2, 4, 1, 1};
+  REQUIRE(h.setOptionValue("presolve_remove_slacks", true) == HighsStatus::kOk);
+  REQUIRE(h.passModel(lp) == HighsStatus::kOk);
+  REQUIRE(h.run() == HighsStatus::kOk);
+  REQUIRE(h.presolve() == HighsStatus::kOk);
+  REQUIRE(h.getPresolvedLp().num_col_ == 2);
+  REQUIRE(h.getPresolvedLp().num_row_ == 2);
+}
+
+TEST_CASE("presolve-issue-2095", "[highs_test_presolve]") {
+  std::string model_file =
+      std::string(HIGHS_DIR) + "/check/instances/issue-2095.mps";
+  Highs highs;
+  highs.setOptionValue("output_flag", dev_run);
+  highs.readModel(model_file);
+  REQUIRE(highs.presolve() == HighsStatus::kOk);
+  REQUIRE(highs.getModelPresolveStatus() == HighsPresolveStatus::kReduced);
+}
+
+TEST_CASE("presolve-only-at-root", "[highs_test_presolve]") {
+  std::string model_file = std::string(HIGHS_DIR) + "/check/instances/rgn.mps";
+
+  Highs highs;
+  highs.setOptionValue("output_flag", dev_run);
+  // Allow only presolve at root node
+  highs.setOptionValue("mip_root_presolve_only", true);
+  highs.readModel(model_file);
+  REQUIRE(highs.run() == HighsStatus::kOk);
+}
+
+TEST_CASE("lifting-for-probing", "[highs_test_presolve]") {
+  std::string model_file =
+      std::string(HIGHS_DIR) + "/check/instances/gesa2.mps";
+
+  Highs highs;
+  highs.setOptionValue("output_flag", dev_run);
+  // Enable lifting for probing
+  highs.setOptionValue("mip_lifting_for_probing", 1);
+  highs.readModel(model_file);
+  REQUIRE(highs.presolve() == HighsStatus::kOk);
+}

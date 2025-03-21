@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -13,14 +10,14 @@
  * underlying matrix storage formats
  */
 
+#ifndef UTIL_HIGHS_MATRIX_SLICE_H_
+#define UTIL_HIGHS_MATRIX_SLICE_H_
+
 #include <cstddef>
 #include <iterator>
 #include <vector>
 
 #include "util/HighsInt.h"
-
-#ifndef UTIL_HIGHS_MATRIX_SLICE_H_
-#define UTIL_HIGHS_MATRIX_SLICE_H_
 
 template <typename StorageFormat>
 class HighsMatrixSlice;
@@ -196,7 +193,7 @@ class HighsMatrixSlice<HighsTripletListSlice> {
     using pointer = const HighsSliceNonzero*;
     using reference = const HighsSliceNonzero&;
 
-    iterator(HighsInt node) : currentNode(node) {}
+    iterator(HighsInt node) : pos_(), nodeNext(nullptr), currentNode(node) {}
     iterator(const HighsInt* nodeIndex, const double* nodeValue,
              const HighsInt* nodeNext, HighsInt node)
         : pos_(node == -1 ? nullptr : nodeIndex + node,
@@ -276,7 +273,8 @@ class HighsMatrixSlice<HighsTripletTreeSlicePreOrder> {
     using pointer = const HighsSliceNonzero*;
     using reference = const HighsSliceNonzero&;
 
-    iterator(HighsInt node) : currentNode(node) {}
+    iterator(HighsInt node)
+        : pos_(), nodeLeft(nullptr), nodeRight(nullptr), currentNode(node) {}
     iterator(const HighsInt* nodeIndex, const double* nodeValue,
              const HighsInt* nodeLeft, const HighsInt* nodeRight, HighsInt node)
         : pos_(nodeIndex + node, nodeValue + node),
@@ -374,7 +372,8 @@ class HighsMatrixSlice<HighsTripletTreeSliceInOrder> {
     using pointer = const HighsSliceNonzero*;
     using reference = const HighsSliceNonzero&;
 
-    iterator(HighsInt node) : currentNode(node) {}
+    iterator(HighsInt node)
+        : pos_(), nodeLeft(nullptr), nodeRight(nullptr), currentNode(node) {}
     iterator(const HighsInt* nodeIndex, const double* nodeValue,
              const HighsInt* nodeLeft, const HighsInt* nodeRight, HighsInt node)
         : pos_(nodeIndex, nodeValue),
@@ -477,7 +476,7 @@ class HighsMatrixSlice<HighsTripletPositionSlice> {
     using pointer = const HighsSliceNonzero*;
     using reference = const HighsSliceNonzero&;
 
-    iterator(const HighsInt* node) : node(node) {}
+    iterator(const HighsInt* node) : pos_(), node(node), currentNode(0) {}
     iterator(const HighsInt* nodeIndex, const double* nodeValue,
              const HighsInt* node)
         : pos_(nodeIndex, nodeValue), node(node), currentNode(0) {}

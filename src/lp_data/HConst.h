@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -21,12 +18,13 @@
 #include "util/HighsInt.h"
 
 const std::string kHighsCopyrightStatement =
-    "Copyright (c) 2024 HiGHS under MIT licence terms";
+    "Copyright (c) 2025 HiGHS under MIT licence terms";
 
 const size_t kHighsSize_tInf = std::numeric_limits<size_t>::max();
 const HighsInt kHighsIInf = std::numeric_limits<HighsInt>::max();
 const HighsInt kHighsIInf32 = std::numeric_limits<int>::max();
 const double kHighsInf = std::numeric_limits<double>::infinity();
+const double kHighsUndefined = kHighsInf;
 const double kHighsTiny = 1e-14;
 const double kHighsMacheps = std::ldexp(1, -52);
 const double kHighsZero = 1e-50;
@@ -85,11 +83,14 @@ enum HighsAnalysisLevel {
   kHighsAnalysisLevelSolverTime = 8,
   kHighsAnalysisLevelNlaData = 16,
   kHighsAnalysisLevelNlaTime = 32,
+  kHighsAnalysisLevelMipData = 64,
+  kHighsAnalysisLevelMipTime = 128,
   kHighsAnalysisLevelMin = kHighsAnalysisLevelNone,
   kHighsAnalysisLevelMax =
       kHighsAnalysisLevelModelData + kHighsAnalysisLevelSolverSummaryData +
       kHighsAnalysisLevelSolverRuntimeData + kHighsAnalysisLevelSolverTime +
-      kHighsAnalysisLevelNlaData + kHighsAnalysisLevelNlaTime
+      kHighsAnalysisLevelNlaData + kHighsAnalysisLevelNlaTime +
+      kHighsAnalysisLevelMipData + kHighsAnalysisLevelMipTime
 };
 
 enum class HighsVarType : uint8_t {
@@ -173,6 +174,7 @@ enum class HighsPresolveStatus {
   kNullError,     // V2.0: Delete since it's not used!
   kOptionsError,  // V2.0: Delete since it's not used!
   kNotSet,
+  kOutOfMemory,  // V2.0: Move above kNotSet
 };
 
 enum class HighsPostsolveStatus {  // V2.0: Delete if not used!
@@ -207,8 +209,9 @@ enum class HighsModelStatus {
   kUnknown,
   kSolutionLimit,
   kInterrupt,
+  kMemoryLimit,
   kMin = kNotset,
-  kMax = kInterrupt
+  kMax = kMemoryLimit
 };
 
 enum HighsCallbackType : int {
@@ -222,7 +225,8 @@ enum HighsCallbackType : int {
   kCallbackMipInterrupt,              // 6
   kCallbackMipGetCutPool,             // 7
   kCallbackMipDefineLazyConstraints,  // 8
-  kCallbackMax = kCallbackMipDefineLazyConstraints,
+  kCallbackMipUserSolution,           // 9
+  kCallbackMax = kCallbackMipUserSolution,
   kNumCallbackType
 };
 
@@ -262,6 +266,15 @@ enum PresolveRuleType : int {
   kPresolveRuleCount,
 };
 
+enum IisStrategy {
+  kIisStrategyMin = 0,
+  kIisStrategyFromLpRowPriority = kIisStrategyMin,  // 0
+  kIisStrategyFromLpColPriority,                    // 1
+  //  kIisStrategyFromRayRowPriority,                     // 2
+  //  kIisStrategyFromRayColPriority,                     // 3
+  kIisStrategyMax = kIisStrategyFromLpColPriority
+};
+
 // Default and max allowed power-of-two matrix scale factor
 const HighsInt kDefaultAllowedMatrixPow2Scale = 20;
 const HighsInt kMaxAllowedMatrixPow2Scale = 30;
@@ -275,6 +288,10 @@ const HighsInt kHighsIllegalInfeasibilityCount = -1;
 // values aren't known
 const double kHighsIllegalErrorValue = kHighsInf;
 const HighsInt kHighsIllegalErrorIndex = -1;
+
+// Illegal values for complementarity violations used to indicate that true
+// values aren't known
+const double kHighsIllegalComplementarityViolation = kHighsInf;
 
 // Maximum upper bound on semi-variables
 const double kMaxSemiVariableUpper = 1e5;

@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -40,8 +37,14 @@ class HighsImplications {
     double coef;
     double constant;
 
-    double minValue() const { return constant + std::min(coef, 0.0); }
-    double maxValue() const { return constant + std::max(coef, 0.0); }
+    double minValue() const {
+      return static_cast<double>(static_cast<HighsCDouble>(constant) +
+                                 std::min(coef, 0.0));
+    }
+    double maxValue() const {
+      return static_cast<double>(static_cast<HighsCDouble>(constant) +
+                                 std::max(coef, 0.0));
+    }
   };
 
  private:
@@ -61,6 +64,9 @@ class HighsImplications {
     nextCleanupCall = mipsolver.numNonzero();
     numImplications = 0;
   }
+
+  std::function<void(HighsInt, HighsInt, HighsInt, double)>
+      storeLiftingOpportunity;
 
   void reset() {
     colsubstituted.clear();
@@ -109,6 +115,7 @@ class HighsImplications {
               double vlbconstant);
 
   void columnTransformed(HighsInt col, double scale, double constant) {
+    // Update variable bounds affected by transformation
     if (scale < 0) std::swap(vubs[col], vlbs[col]);
 
     auto transformVbd = [&](HighsInt, VarBound& vbd) {
@@ -119,6 +126,15 @@ class HighsImplications {
 
     vlbs[col].for_each(transformVbd);
     vubs[col].for_each(transformVbd);
+
+    // Update substitutions affected by transformation
+    for (auto& substitution : substitutions) {
+      if (substitution.substcol == col) {
+        substitution.offset -= constant;
+        substitution.offset /= scale;
+        substitution.scale /= scale;
+      }
+    }
   }
 
   std::pair<HighsInt, VarBound> getBestVub(HighsInt col,
@@ -141,6 +157,14 @@ class HighsImplications {
                              HighsCutPool& cutpool, double feastol);
 
   void cleanupVarbounds(HighsInt col);
+
+  void cleanupVlb(HighsInt col, HighsInt vlbCol,
+                  HighsImplications::VarBound& vlb, double lb, bool& redundant,
+                  bool& infeasible, bool allowBoundChanges = true) const;
+
+  void cleanupVub(HighsInt col, HighsInt vubCol,
+                  HighsImplications::VarBound& vub, double ub, bool& redundant,
+                  bool& infeasible, bool allowBoundChanges = true) const;
 };
 
 #endif

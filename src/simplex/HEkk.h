@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -25,7 +22,41 @@ class HighsLpSolverObject;
 
 class HEkk {
  public:
-  HEkk() {}
+  HEkk()
+      : callback_(nullptr),
+        options_(nullptr),
+        timer_(nullptr),
+        lp_name_(""),
+        model_status_(HighsModelStatus::kNotset),
+        simplex_in_scaled_space_(false),
+        cost_scale_(1.0),
+        cost_perturbation_base_(0.0),
+        cost_perturbation_max_abs_cost_(0.0),
+        iteration_count_(0),
+        dual_simplex_cleanup_level_(0),
+        dual_simplex_phase1_cleanup_level_(0),
+        previous_iteration_cycling_detected(-kHighsIInf),
+        solve_bailout_(false),
+        called_return_from_solve_(false),
+        exit_algorithm_(SimplexAlgorithm::kNone),
+        return_primal_solution_status_(0),
+        return_dual_solution_status_(0),
+        original_num_col_(0),
+        original_num_row_(0),
+        original_num_nz_(0),
+        original_offset_(0.0),
+        edge_weight_error_(0.0),
+        build_synthetic_tick_(0.0),
+        total_synthetic_tick_(0.0),
+        debug_solve_call_num_(0),
+        debug_basis_id_(0),
+        time_report_(false),
+        debug_initial_build_synthetic_tick_(0),
+        debug_solve_report_(false),
+        debug_iteration_report_(false),
+        debug_basis_report_(false),
+        debug_dual_feasible(false),
+        debug_max_relative_dual_steepest_edge_weight_error(0) {}
   /**
    * @brief Interface to simplex solvers
    */
@@ -42,6 +73,7 @@ class HEkk {
   void clearEkkDataStatus();
   void clearNlaStatus();
   void clearNlaInvertStatus();
+  void clearRayRecords();
 
   void invalidate();
   void invalidateBasisMatrix();
@@ -52,7 +84,6 @@ class HEkk {
   void setNlaPointersForLpAndScale(const HighsLp& lp);
   void setNlaPointersForTrans(const HighsLp& lp);
   void setNlaRefactorInfo();
-  void clearHotStart();
   void btran(HVector& rhs, const double expected_density);
   void ftran(HVector& rhs, const double expected_density);
 
@@ -70,10 +101,6 @@ class HEkk {
   HighsStatus solve(const bool force_phase2 = false);
   HighsStatus setBasis();
   HighsStatus setBasis(const HighsBasis& highs_basis);
-
-  void freezeBasis(HighsInt& frozen_basis_id);
-  HighsStatus unfreezeBasis(const HighsInt frozen_basis_id);
-  HighsStatus frozenBasisAllDataClear();
 
   void putIterate();
   HighsStatus getIterate();
@@ -100,13 +127,18 @@ class HEkk {
   HighsBasis getHighsBasis(HighsLp& use_lp) const;
 
   const SimplexBasis& getSimplexBasis() { return basis_; }
+  double computeBasisCondition(const HighsLp& lp, const bool exact = false,
+                               const bool report = false) const;
+  double computeBasisCondition() const {
+    return computeBasisCondition(this->lp_, false, false);
+  }
 
   HighsStatus initialiseSimplexLpBasisAndFactor(
       const bool only_from_known_basis = false);
   void handleRankDeficiency();
   void initialisePartitionedRowwiseMatrix();
-  bool lpFactorRowCompatible();
-  bool lpFactorRowCompatible(HighsInt expectedNumRow);
+  bool lpFactorRowCompatible() const;
+  bool lpFactorRowCompatible(const HighsInt expectedNumRow) const;
 
   // Interface methods
   void appendColsToVectors(const HighsInt num_new_col,
@@ -116,6 +148,12 @@ class HEkk {
   void appendRowsToVectors(const HighsInt num_new_row,
                            const vector<double>& rowLower,
                            const vector<double>& rowUpper);
+
+  const HighsSimplexStats& getSimplexStats() const { return simplex_stats_; }
+  void initialiseSimplexStats() { simplex_stats_.initialise(iteration_count_); }
+  void reportSimplexStats(FILE* file, const std::string message = "") const {
+    simplex_stats_.report(file, message);
+  }
 
   // Make this private later
   void chooseSimplexStrategyThreads(const HighsOptions& options,
@@ -153,16 +191,19 @@ class HEkk {
   HighsSparseMatrix ar_matrix_;
   HighsSparseMatrix scaled_a_matrix_;
   HSimplexNla simplex_nla_;
+
+  // Unused, but retained since there is a const reference to this in
+  // a deprecated method
   HotStart hot_start_;
 
-  double cost_scale_ = 1;
+  double cost_scale_;
   double cost_perturbation_base_;
   double cost_perturbation_max_abs_cost_;
-  HighsInt iteration_count_ = 0;
-  HighsInt dual_simplex_cleanup_level_ = 0;
-  HighsInt dual_simplex_phase1_cleanup_level_ = 0;
+  HighsInt iteration_count_;
+  HighsInt dual_simplex_cleanup_level_;
+  HighsInt dual_simplex_phase1_cleanup_level_;
 
-  HighsInt previous_iteration_cycling_detected = -kHighsIInf;
+  HighsInt previous_iteration_cycling_detected;
 
   bool solve_bailout_;
   bool called_return_from_solve_;
@@ -173,6 +214,10 @@ class HEkk {
   // Data to be retained after proving primal infeasibility
   vector<HighsInt> proof_index_;
   vector<double> proof_value_;
+
+  // Data to be retained after computing primal or dual ray
+  HighsRayRecord dual_ray_record_;
+  HighsRayRecord primal_ray_record_;
 
   // Data to be retained when dualizing
   HighsInt original_num_col_;
@@ -197,19 +242,22 @@ class HEkk {
 
   double edge_weight_error_;
 
-  double build_synthetic_tick_ = 0;
-  double total_synthetic_tick_ = 0;
-  HighsInt debug_solve_call_num_ = 0;
-  HighsInt debug_basis_id_ = 0;
-  bool time_report_ = false;
-  HighsInt debug_initial_build_synthetic_tick_ = 0;
-  bool debug_solve_report_ = false;
-  bool debug_iteration_report_ = false;
-  bool debug_basis_report_ = false;
-  bool debug_dual_feasible = false;
-  double debug_max_relative_dual_steepest_edge_weight_error = 0;
+  double build_synthetic_tick_;
+  double total_synthetic_tick_;
+  HighsInt debug_solve_call_num_;
+  HighsInt debug_basis_id_;
+  bool time_report_;
+  HighsInt debug_initial_build_synthetic_tick_;
+  bool debug_solve_report_;
+  bool debug_iteration_report_;
+  bool debug_basis_report_;
+  bool debug_dual_feasible;
+  double debug_max_relative_dual_steepest_edge_weight_error;
 
   std::vector<HighsSimplexBadBasisChangeRecord> bad_basis_change_;
+  std::vector<double> primal_phase1_dual_;
+
+  HighsSimplexStats simplex_stats_;
 
  private:
   bool isUnconstrainedLp();
@@ -298,7 +346,6 @@ class HEkk {
   HighsStatus returnFromEkkSolve(const HighsStatus return_status);
   HighsStatus returnFromSolve(const HighsStatus return_status);
 
-  double computeBasisCondition();
   void initialiseAnalysis();
   std::string rebuildReason(const HighsInt rebuild_reason);
 

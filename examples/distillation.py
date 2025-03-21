@@ -8,28 +8,20 @@
 
 import highspy
 
+# For printing
+width = 4
+precision = 3
+
 h = highspy.Highs()
 h.silent()
 
-varNames = list()
-varNames.append('TypeA')
-varNames.append('TypeB')
+variableNames = ['TypeA', 'TypeB']
+x = h.addVariables(variableNames, obj = [8, 10], name = variableNames[0])
 
-useTypeA = h.addVar(obj =  8, name = varNames[0])
-useTypeB = h.addVar(obj = 10, name = varNames[1])
-
-vars = list()
-vars.append(useTypeA)
-vars.append(useTypeB)
-
-constrNames = list()
-constrNames.append('Product1')
-constrNames.append('Product2')
-constrNames.append('Product3')
-
-h.addConstr(2*useTypeA + 2*useTypeB >=  7, name = constrNames[0])
-h.addConstr(3*useTypeA + 4*useTypeB >= 12, name = constrNames[1])
-h.addConstr(2*useTypeA +   useTypeB >=  6, name = constrNames[2])
+constrNames = ['Product1', 'Product2', 'Product3']
+cons = h.addConstrs(2*x['TypeA'] + 2*x['TypeB'] >=  7,
+                    3*x['TypeA'] + 4*x['TypeB'] >= 12,
+                    2*x['TypeA'] +   x['TypeB'] >=  6, name = constrNames)
 
 h.setMinimize()
 
@@ -38,34 +30,51 @@ print('writeModel(\'Distillation.lp\') status =', status)
 status = h.writeModel('Distillation.mps')
 print('writeModel(\'Distillation.mps\') status =', status)
 
+print()
+print('Solve as LP')
+
 h.solve()
 
-print()
-print('Solved as LP')
+for name, var in x.items():
+    print('Use {0:.1f} of {1:s}: reduced cost {2:.6f}'.format(h.variableValue(var), h.variableName(var), h.variableDual(var)))
+    
+print('Use', h.variableValues(x.values()), 'of', h.variableNames(x.values()))
+print('Use', h.allVariableValues(), 'of', h.allVariableNames())
 
-for var in vars:
-    print('Use', h.varValue(var), h.varName(var), ': Reduced cost', h.varDual(var))
-print('Use', h.varValues(vars), 'of', h.varNames(vars))
-print('Use', h.allVarValues(), 'of', h.allVarNames())
+for c in cons:
+    print(f"Constraint {c.name} has value {h.constrValue(c):{width}.{precision}} and dual  {h.constrDual(c):{width}.{precision}}")
 
-for name in constrNames:
-    print('Constraint', name, 'has value', h.constrValue(name), 'and dual', h.constrDual(name))
-
-print('Constraints have values', h.constrValues(constrNames), 'and duals', h.constrDuals(constrNames))
-
+print('Constraints have values', h.constrValues(cons), 'and duals', h.constrDuals(cons))
 print('Constraints have values', h.allConstrValues(), 'and duals', h.allConstrDuals())
 
-print('Optimal objective value is', h.getObjectiveValue())
+for var in x.values():
+    print(f"Use {h.variableValue(var):{width}.{precision}} of {h.variableName(var)}")
+print(f"Optimal objective value is {h.getObjectiveValue():{width}.{precision}}")
 
-for var in vars:
+print()
+print('Solve as MIP')
+
+for var in x.values():
     h.setInteger(var)
 
 h.solve()
 
+for var in x.values():
+    print(f"Use {h.variableValue(var):{width}.{precision}} of {h.variableName(var)}")
+print(f"Optimal objective value is {h.getObjectiveValue():{width}.{precision}}")
+
 print()
-print('Solved as MIP')
+print('Solve as LP with Gomory cut')
 
-for var in vars:
-    print('Use', h.varValue(var), h.varName(var))
+# Make the variables continuous
+for var in x.values():
+    h.setContinuous(var)
 
-print('Optimal objective value is', h.getObjectiveValue())
+# Add Gomory cut
+h.addConstr(x['TypeA'] + x['TypeB'] >= 4, name = "Gomory")
+
+h.solve()
+
+for var in x.values():
+    print(f"Use {h.variableValue(var):{width}.{precision}} of {h.variableName(var)}")
+print(f"Optimal objective value is {h.getObjectiveValue():{width}.{precision}}")

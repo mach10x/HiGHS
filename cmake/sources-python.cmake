@@ -27,7 +27,7 @@ set(cupdlp_sources_python
   src/pdlp/cupdlp/cupdlp_linalg.c
   src/pdlp/cupdlp/cupdlp_proj.c
   src/pdlp/cupdlp/cupdlp_restart.c
-  src/pdlp/cupdlp/cupdlp_scaling_cuda.c
+  src/pdlp/cupdlp/cupdlp_scaling.c
   src/pdlp/cupdlp/cupdlp_solver.c
   src/pdlp/cupdlp/cupdlp_step.c
   src/pdlp/cupdlp/cupdlp_utils.c)
@@ -38,10 +38,16 @@ set(cupdlp_headers_python
   src/pdlp/cupdlp/cupdlp_linalg.h
   src/pdlp/cupdlp/cupdlp_proj.h
   src/pdlp/cupdlp/cupdlp_restart.h
-  src/pdlp/cupdlp/cupdlp_scaling_cuda.h
+  src/pdlp/cupdlp/cupdlp_scaling.h
   src/pdlp/cupdlp/cupdlp_solver.h
   src/pdlp/cupdlp/cupdlp_step.h
   src/pdlp/cupdlp/cupdlp_utils.c)
+
+set(cuda_sources_python
+  pdlp/cupdlp/cuda/cupdlp_cuda_kernels.cu
+  pdlp/cupdlp/cuda/cupdlp_cuda_kernels.cuh
+  pdlp/cupdlp/cuda/cupdlp_cudalinalg.cuh
+  pdlp/cupdlp/cuda/cupdlp_cudalinalg.cu)
 
 set(basiclu_sources_python
   src/ipm/basiclu/basiclu_factorize.c
@@ -184,6 +190,7 @@ set(highs_sources_python
     src/lp_data/Highs.cpp
     src/lp_data/HighsCallback.cpp
     src/lp_data/HighsDebug.cpp
+    src/lp_data/HighsIis.cpp
     src/lp_data/HighsInfo.cpp
     src/lp_data/HighsInfoDebug.cpp
     src/lp_data/HighsInterface.cpp
@@ -207,6 +214,7 @@ set(highs_sources_python
     src/mip/HighsImplications.cpp
     src/mip/HighsLpAggregator.cpp
     src/mip/HighsLpRelaxation.cpp
+    src/mip/HighsMipAnalysis.cpp
     src/mip/HighsMipSolver.cpp
     src/mip/HighsMipSolverData.cpp
     src/mip/HighsModkSeparator.cpp
@@ -298,6 +306,7 @@ set(highs_headers_python
     src/lp_data/HighsCallback.h
     src/lp_data/HighsCallbackStruct.h
     src/lp_data/HighsDebug.h
+    src/lp_data/HighsIis.h
     src/lp_data/HighsInfo.h
     src/lp_data/HighsInfoDebug.h
     src/lp_data/HighsLp.h
@@ -306,7 +315,6 @@ set(highs_headers_python
     src/lp_data/HighsModelUtils.h
     src/lp_data/HighsOptions.h
     src/lp_data/HighsRanging.h
-    src/lp_data/HighsRuntimeOptions.h
     src/lp_data/HighsSolution.h
     src/lp_data/HighsSolutionDebug.h
     src/lp_data/HighsSolve.h
@@ -324,6 +332,7 @@ set(highs_headers_python
     src/mip/HighsImplications.h
     src/mip/HighsLpAggregator.h
     src/mip/HighsLpRelaxation.h
+    src/mip/HighsMipAnalysis.h
     src/mip/HighsMipSolver.h
     src/mip/HighsMipSolverData.h
     src/mip/HighsModkSeparator.h
@@ -338,6 +347,7 @@ set(highs_headers_python
     src/mip/HighsSeparator.h
     src/mip/HighsTableauSeparator.h
     src/mip/HighsTransformedLp.h
+    src/mip/MipTimer.h
     src/model/HighsHessian.h
     src/model/HighsHessianUtils.h
     src/model/HighsModel.h
@@ -369,15 +379,15 @@ set(highs_headers_python
     src/qpsolver/devexpricing.hpp
     src/qpsolver/eventhandler.hpp
     src/qpsolver/factor.hpp
+    src/qpsolver/feasibility_bounded.hpp
     src/qpsolver/feasibility_highs.hpp
-    src/qpsolver/feasibility_quass.hpp
-    src/qpsolver/feasibility.hpp
     src/qpsolver/gradient.hpp
     src/qpsolver/instance.hpp
     src/qpsolver/matrix.hpp
     src/qpsolver/perturbation.hpp
     src/qpsolver/pricing.hpp
     src/qpsolver/qpconst.hpp
+    src/qpsolver/qpvector.hpp
     src/qpsolver/quass.hpp
     src/qpsolver/ratiotest.hpp
     src/qpsolver/runtime.hpp
@@ -386,7 +396,6 @@ set(highs_headers_python
     src/qpsolver/snippets.hpp
     src/qpsolver/statistics.hpp
     src/qpsolver/steepestedgepricing.hpp
-    src/qpsolver/vector.hpp
     src/simplex/HApp.h
     src/simplex/HEkk.h
     src/simplex/HEkkDual.h
@@ -419,6 +428,7 @@ set(highs_headers_python
     src/util/HighsMatrixPic.h
     src/util/HighsMatrixSlice.h
     src/util/HighsMatrixUtils.h
+    src/util/HighsMemoryAllocation.h
     src/util/HighsRandom.h
     src/util/HighsRbTree.h
     src/util/HighsSort.h

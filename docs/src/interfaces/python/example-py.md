@@ -40,8 +40,8 @@ subject to              x1 <= 7
 Using the simplified interface, the model can be built as follows:
 
 ```python
-x0 = h.addVar(lb = 0, ub = 4)
-x1 = h.addVar(lb = 1, ub = 7)
+x0 = h.addVariable(lb = 0, ub = 4)
+x1 = h.addVariable(lb = 1, ub = 7)
 
 h.addConstr(5 <=   x0 + 2*x1 <= 15)
 h.addConstr(6 <= 3*x0 + 2*x1)
@@ -175,6 +175,8 @@ print('Basis validity = ', h.basisValidityToString(info.basis_validity))
  * `getInfo`
  * `getSolution`
  * `getBasis`
+ * `getObjectiveValue`
+ * `getDualObjectiveValue`
 
 ## Report results
 
@@ -206,11 +208,13 @@ print('Basis validity = ', h.basisValidityToString(info.basis_validity))
 
 ## Modify model data
 
+ * `EnsureColwise`
+ * `EnsureRowwise`
  * `changeObjectiveSense`
  * `changeColCost`
  * `changeColBounds`
  * `changeRowBounds`
- * `changeColsCosts`
+ * `changeColsCost`
  * `changeColsBounds`
  * `changeRowsBounds`
  * `changeCoeff`
@@ -222,3 +226,50 @@ print('Basis validity = ', h.basisValidityToString(info.basis_validity))
 ## Set basis
 
  * `setBasis`
+
+## Presolve/postsolve
+
+ * `presolve`
+ * `getPresolvedLp`
+ * `getPresolvedModel`
+ * `getPresolveLog`
+ * `getPresolveOrigColsIndex`
+ * `getPresolveOrigRowsIndex`
+ * `getModelPresolveStatus`
+ * `writePresolvedModel`
+ * `presolveStatusToString`
+ * `presolveRuleTypeToString`
+ * `postsolve`
+
+## Basis solves and tableau calculation
+ * `getBasicVariables`
+ * `getBasisInverseRow`
+ * `getBasisInverseRowSparse`
+ * `getBasisInverseCol`
+ * `getBasisInverseColSparse`
+ * `getBasisSolve`
+ * `getBasisSolveSparse`
+ * `getBasisTransposeSolve`
+ * `getBasisTransposeSolveSparse`
+ * `getReducedRow`
+ * `getReducedRowSparse`
+ * `getReducedColumn`
+ * `getReducedColumnSparse`
+
+## Rays and unboundedness
+
+ * `getDualRayExist`
+ * `getDualRay`
+ * `getDualUnboundednessDirectionExist`
+ * `getDualUnboundednessDirection`
+ * `getPrimalRayExist`
+ * `getPrimalRay`
+ 
+## Multi-objective optimization
+
+* `addLinearObjective`
+* `clearLinearObjectives`
+
+
+
+

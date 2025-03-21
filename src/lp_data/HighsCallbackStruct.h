@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -20,6 +17,10 @@
 extern "C" {
 #endif
 
+/**
+ * Struct to handle callback output data
+ *
+ */
 typedef struct {
   int log_type;  // cast of HighsLogType
   double running_time;
@@ -28,6 +29,7 @@ typedef struct {
   HighsInt pdlp_iteration_count;
   double objective_function_value;
   int64_t mip_node_count;
+  int64_t mip_total_lp_iterations;
   double mip_primal_bound;
   double mip_dual_bound;
   double mip_gap;
@@ -40,10 +42,12 @@ typedef struct {
   double* cutpool_value;
   double* cutpool_lower;
   double* cutpool_upper;
+  HighsInt user_solution_callback_origin;
 } HighsCallbackDataOut;
 
 typedef struct {
   int user_interrupt;
+  double* user_solution;
 } HighsCallbackDataIn;
 
 // Additional callback handling
