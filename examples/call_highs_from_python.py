@@ -54,6 +54,13 @@ h.run()
 solution = h.getSolution()
 basis = h.getBasis()
 info = h.getInfo()
+# basis.col_status and basis.row_status are already lists, but
+# accessing values in solution.col_value and solution.row_value
+# directly is very inefficient, so convert them to lists
+col_status = basis.col_status
+row_status = basis.row_status
+col_value = list(solution.col_value)
+row_value = list(solution.row_value)
 model_status = h.getModelStatus()
 print("Model status = ", h.modelStatusToString(model_status))
 print("Optimal objective = ", info.objective_function_value)
@@ -69,12 +76,12 @@ num_var = h.getNumCol()
 num_row = h.getNumRow()
 print("Variables")
 for icol in range(num_var):
-    print(icol, solution.col_value[icol],
-          h.basisStatusToString(basis.col_status[icol]))
+    print(icol, col_value[icol],
+          h.basisStatusToString(col_status[icol]))
 print("Constraints")
 for irow in range(num_row):
-    print(irow, solution.row_value[irow],
-          h.basisStatusToString(basis.row_status[irow]))
+    print(irow, row_value[irow],
+          h.basisStatusToString(row_status[irow]))
 
 # ~~~
 # Clear so that incumbent model is empty
@@ -320,6 +327,12 @@ num_var = h.getNumCol()
 solution = h.getSolution()
 basis = h.getBasis()
 info = h.getInfo()
+#
+col_status = basis.col_status
+col_value = list(solution.col_value)
+# basis.col_status is already a list, but accessing values in
+# solution.col_value directly is very inefficient, so convert it to a
+# list
 model_status = h.getModelStatus()
 print("Model status = ", h.modelStatusToString(model_status))
 print("Optimal objective = ", info.objective_function_value)
@@ -333,9 +346,13 @@ print("Dual solution status = ",
 print("Basis validity = ", h.basisValidityToString(info.basis_validity))
 print("Variables:")
 for icol in range(0, 5):
-    print(icol, solution.col_value[icol],
-          h.basisStatusToString(basis.col_status[icol]))
+    print(icol, col_value[icol],
+          h.basisStatusToString(col_status[icol]))
 print("...")
 for icol in range(num_var-2, num_var):
-    print(icol, solution.col_value[icol],
-          h.basisStatusToString(basis.col_status[icol]))
+    print(icol, col_value[icol],
+          h.basisStatusToString(col_status[icol]))
+
+# ~~~
+# Clear so that incumbent model is empty
+h.clear()

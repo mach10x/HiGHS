@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -54,7 +51,6 @@ class OptionRecordBool : public OptionRecord {
   OptionRecordBool(std::string Xname, std::string Xdescription, bool Xadvanced,
                    bool* Xvalue_pointer, bool Xdefault_value)
       : OptionRecord(HighsOptionType::kBool, Xname, Xdescription, Xadvanced) {
-    advanced = Xadvanced;
     value = Xvalue_pointer;
     default_value = Xdefault_value;
     *value = default_value;
@@ -236,22 +232,28 @@ OptionStatus getLocalOptionType(
 void resetLocalOptions(std::vector<OptionRecord*>& option_records);
 
 HighsStatus writeOptionsToFile(
-    FILE* file, const std::vector<OptionRecord*>& option_records,
+    FILE* file, const HighsLogOptions& report_log_options,
+    const std::vector<OptionRecord*>& option_records,
     const bool report_only_deviations = false,
-    const HighsFileType file_type = HighsFileType::kOther);
-void reportOptions(FILE* file, const std::vector<OptionRecord*>& option_records,
-                   const bool report_only_deviations = true,
-                   const HighsFileType file_type = HighsFileType::kOther);
-void reportOption(FILE* file, const OptionRecordBool& option,
+    const HighsFileType file_type = HighsFileType::kFull);
+void reportOptions(FILE* file, const HighsLogOptions& report_log_options,
+                   const std::vector<OptionRecord*>& option_records,
+                   const bool report_only_deviations = false,
+                   const HighsFileType file_type = HighsFileType::kFull);
+void reportOption(FILE* file, const HighsLogOptions& report_log_options,
+                  const OptionRecordBool& option,
                   const bool report_only_deviations,
                   const HighsFileType file_type);
-void reportOption(FILE* file, const OptionRecordInt& option,
+void reportOption(FILE* file, const HighsLogOptions& report_log_options,
+                  const OptionRecordInt& option,
                   const bool report_only_deviations,
                   const HighsFileType file_type);
-void reportOption(FILE* file, const OptionRecordDouble& option,
+void reportOption(FILE* file, const HighsLogOptions& report_log_options,
+                  const OptionRecordDouble& option,
                   const bool report_only_deviations,
                   const HighsFileType file_type);
-void reportOption(FILE* file, const OptionRecordString& option,
+void reportOption(FILE* file, const HighsLogOptions& report_log_options,
+                  const OptionRecordString& option,
                   const bool report_only_deviations,
                   const HighsFileType file_type);
 
@@ -265,6 +267,8 @@ const HighsInt kKeepNRowsKeepRows = 1;
 
 // Strings for command line options
 const string kModelFileString = "model_file";
+const string kReadBasisFile = "read_basis_file";
+const string kWriteBasisFile = "write_basis_file";
 const string kPresolveString = "presolve";
 const string kSolverString = "solver";
 const string kParallelString = "parallel";
@@ -276,6 +280,7 @@ const string kSolutionFileString = "solution_file";
 const string kRangingString = "ranging";
 const string kVersionString = "version";
 const string kWriteModelFileString = "write_model_file";
+const string kWritePresolvedModelFileString = "write_presolved_model_file";
 const string kReadSolutionFileString = "read_solution_file";
 
 // String for HiGHS log file option
@@ -301,6 +306,8 @@ struct HighsOptionsStruct {
   double primal_feasibility_tolerance;
   double dual_feasibility_tolerance;
   double ipm_optimality_tolerance;
+  double primal_residual_tolerance;
+  double dual_residual_tolerance;
   double objective_bound;
   double objective_target;
   HighsInt threads;
@@ -320,13 +327,16 @@ struct HighsOptionsStruct {
 
   std::string log_file;
   bool write_model_to_file;
+  bool write_presolved_model_to_file;
   bool write_solution_to_file;
   HighsInt write_solution_style;
   HighsInt glpsol_cost_row_location;
+  std::string write_presolved_model_file;
 
   // Control of HiGHS log
   bool output_flag;
   bool log_to_console;
+  bool timeless_log;
 
   // Options for IPM solver
   HighsInt ipm_iteration_limit;
@@ -338,6 +348,16 @@ struct HighsOptionsStruct {
   HighsInt pdlp_e_restart_method;
   double pdlp_d_gap_tol;
 
+  // Options for QP solver
+  HighsInt qp_iteration_limit;
+  HighsInt qp_nullspace_limit;
+
+  // Options for IIS calculation
+  HighsInt iis_strategy;
+
+  // Option for multi-objective optimization
+  bool blend_multi_objectives;
+
   // Advanced options
   HighsInt log_dev_level;
   bool log_githash;
@@ -346,6 +366,7 @@ struct HighsOptionsStruct {
   bool use_implied_bounds_from_presolve;
   bool lp_presolve_requires_basis_postsolve;
   bool mps_parser_type_free;
+  bool use_warm_start;
   HighsInt keep_n_rows;
   HighsInt cost_scale_factor;
   HighsInt allowed_matrix_scale_factor;
@@ -362,6 +383,7 @@ struct HighsOptionsStruct {
   HighsInt presolve_substitution_maxfillin;
   HighsInt presolve_rule_off;
   bool presolve_rule_logging;
+  bool presolve_remove_slacks;
   bool simplex_initial_condition_check;
   bool no_unnecessary_rebuild_refactor;
   double simplex_initial_condition_tolerance;
@@ -397,6 +419,7 @@ struct HighsOptionsStruct {
   bool mip_allow_restart;
   HighsInt mip_max_nodes;
   HighsInt mip_max_stall_nodes;
+  HighsInt mip_max_start_nodes;
   HighsInt mip_max_leaves;
   HighsInt mip_max_improving_sols;
   HighsInt mip_lp_age_limit;
@@ -416,10 +439,148 @@ struct HighsOptionsStruct {
   bool mip_improving_solution_save;
   bool mip_improving_solution_report_sparse;
   std::string mip_improving_solution_file;
+  bool mip_root_presolve_only;
+  HighsInt mip_lifting_for_probing;
 
   // Logging callback identifiers
   HighsLogOptions log_options;
   virtual ~HighsOptionsStruct() {}
+
+  HighsOptionsStruct()
+      : presolve(""),
+        solver(""),
+        parallel(""),
+        run_crossover(""),
+        time_limit(0.0),
+        solution_file(""),
+        write_model_file(""),
+        random_seed(0),
+        ranging(""),
+        infinite_cost(0.0),
+        infinite_bound(0.0),
+        small_matrix_value(0.0),
+        large_matrix_value(0.0),
+        primal_feasibility_tolerance(0.0),
+        dual_feasibility_tolerance(0.0),
+        ipm_optimality_tolerance(0.0),
+        primal_residual_tolerance(0.0),
+        dual_residual_tolerance(0.0),
+        objective_bound(0.0),
+        objective_target(0.0),
+        threads(0),
+        user_bound_scale(0),
+        user_cost_scale(0),
+        highs_debug_level(0),
+        highs_analysis_level(0),
+        simplex_strategy(0),
+        simplex_scale_strategy(0),
+        simplex_crash_strategy(0),
+        simplex_dual_edge_weight_strategy(0),
+        simplex_primal_edge_weight_strategy(0),
+        simplex_iteration_limit(0),
+        simplex_update_limit(0),
+        simplex_min_concurrency(0),
+        simplex_max_concurrency(0),
+        log_file(""),
+        write_model_to_file(false),
+        write_presolved_model_to_file(false),
+        write_solution_to_file(false),
+        write_solution_style(0),
+        glpsol_cost_row_location(0),
+        write_presolved_model_file(""),
+        output_flag(false),
+        log_to_console(false),
+        timeless_log(false),
+        ipm_iteration_limit(0),
+        pdlp_native_termination(false),
+        pdlp_scaling(false),
+        pdlp_iteration_limit(0),
+        pdlp_e_restart_method(0),
+        pdlp_d_gap_tol(0.0),
+        qp_iteration_limit(0),
+        qp_nullspace_limit(0),
+        iis_strategy(0),
+        blend_multi_objectives(false),
+        log_dev_level(0),
+        log_githash(false),
+        solve_relaxation(false),
+        allow_unbounded_or_infeasible(false),
+        use_implied_bounds_from_presolve(false),
+        lp_presolve_requires_basis_postsolve(false),
+        mps_parser_type_free(false),
+        use_warm_start(true),
+        keep_n_rows(0),
+        cost_scale_factor(0),
+        allowed_matrix_scale_factor(0),
+        allowed_cost_scale_factor(0),
+        ipx_dualize_strategy(0),
+        simplex_dualize_strategy(0),
+        simplex_permute_strategy(0),
+        max_dual_simplex_cleanup_level(0),
+        max_dual_simplex_phase1_cleanup_level(0),
+        simplex_price_strategy(0),
+        simplex_unscaled_solution_strategy(0),
+        presolve_reduction_limit(0),
+        restart_presolve_reduction_limit(0),
+        presolve_substitution_maxfillin(0),
+        presolve_rule_off(0),
+        presolve_rule_logging(false),
+        presolve_remove_slacks(false),
+        simplex_initial_condition_check(false),
+        no_unnecessary_rebuild_refactor(false),
+        simplex_initial_condition_tolerance(0.0),
+        rebuild_refactor_solution_error_tolerance(0.0),
+        dual_steepest_edge_weight_error_tolerance(0.0),
+        dual_steepest_edge_weight_log_error_threshold(0.0),
+        dual_simplex_cost_perturbation_multiplier(0.0),
+        primal_simplex_bound_perturbation_multiplier(0.0),
+        dual_simplex_pivot_growth_tolerance(0.0),
+        presolve_pivot_threshold(0.0),
+        factor_pivot_threshold(0.0),
+        factor_pivot_tolerance(0.0),
+        start_crossover_tolerance(0.0),
+        less_infeasible_DSE_check(false),
+        less_infeasible_DSE_choose_row(false),
+        use_original_HFactor_logic(false),
+        run_centring(false),
+        max_centring_steps(0),
+        centring_ratio_tolerance(0.0),
+        icrash(false),
+        icrash_dualize(false),
+        icrash_strategy(""),
+        icrash_starting_weight(0.0),
+        icrash_iterations(0),
+        icrash_approx_iter(0),
+        icrash_exact(false),
+        icrash_breakpoints(false),
+        mip_detect_symmetry(false),
+        mip_allow_restart(false),
+        mip_max_nodes(0),
+        mip_max_stall_nodes(0),
+        mip_max_start_nodes(0),
+        mip_max_leaves(0),
+        mip_max_improving_sols(0),
+        mip_lp_age_limit(0),
+        mip_pool_age_limit(0),
+        mip_pool_soft_limit(0),
+        mip_pscost_minreliable(0),
+        mip_min_cliquetable_entries_for_parallelism(0),
+        mip_report_level(0),
+        mip_feasibility_tolerance(0.0),
+        mip_rel_gap(0.0),
+        mip_abs_gap(0.0),
+        mip_heuristic_effort(0.0),
+        mip_min_logging_interval(0.0),
+#ifdef HIGHS_DEBUGSOL
+        mip_debug_solution_file(""),
+#endif
+        mip_improving_solution_save(false),
+        mip_improving_solution_report_sparse(false),
+        // clang-format off
+        mip_improving_solution_file(""),
+        mip_root_presolve_only(false),
+        mip_lifting_for_probing(-1) {};
+  // clang-format on
 };
 
 // For now, but later change so HiGHS properties are string based so that new
@@ -562,6 +723,16 @@ class HighsOptions : public HighsOptionsStruct {
     records.push_back(record_double);
 
     record_double = new OptionRecordDouble(
+        "primal_residual_tolerance", "Primal residual tolerance", advanced,
+        &primal_residual_tolerance, 1e-10, 1e-7, kHighsInf);
+    records.push_back(record_double);
+
+    record_double = new OptionRecordDouble(
+        "dual_residual_tolerance", "Dual residual tolerance", advanced,
+        &dual_residual_tolerance, 1e-10, 1e-7, kHighsInf);
+    records.push_back(record_double);
+
+    record_double = new OptionRecordDouble(
         "objective_bound",
         "Objective bound for termination of the dual simplex solver", advanced,
         &objective_bound, -kHighsInf, kHighsInf, kHighsInf);
@@ -602,14 +773,15 @@ class HighsOptions : public HighsOptionsStruct {
 
     record_int = new OptionRecordInt(
         "highs_analysis_level", "Analysis level in HiGHS", now_advanced,
-        &highs_analysis_level, kHighsAnalysisLevelMin, kHighsAnalysisLevelMin,
+        &highs_analysis_level, kHighsAnalysisLevelMin,
+        kHighsAnalysisLevelMin,  // kHighsAnalysisLevelMipTime,  //
         kHighsAnalysisLevelMax);
     records.push_back(record_int);
 
     record_int = new OptionRecordInt(
         "simplex_strategy",
         "Strategy for simplex solver 0 => Choose; 1 => Dual (serial); 2 => "
-        "Dual (PAMI); 3 => Dual (SIP); 4 => Primal",
+        "Dual (SIP); 3 => Dual (PAMI); 4 => Primal",
         advanced, &simplex_strategy, kSimplexStrategyMin, kSimplexStrategyDual,
         kSimplexStrategyMax);
     records.push_back(record_int);
@@ -683,6 +855,11 @@ class HighsOptions : public HighsOptionsStruct {
     record_bool = new OptionRecordBool("log_to_console",
                                        "Enables or disables console logging",
                                        advanced, &log_to_console, true);
+    records.push_back(record_bool);
+
+    record_bool = new OptionRecordBool(
+        "timeless_log", "Suppression of time-based data in logging", true,
+        &timeless_log, false);
     records.push_back(record_bool);
 
     record_string =
@@ -770,6 +947,16 @@ class HighsOptions : public HighsOptionsStruct {
                              advanced, &write_model_to_file, false);
     records.push_back(record_bool);
 
+    record_string = new OptionRecordString(
+        kWritePresolvedModelFileString, "Write presolved model file", advanced,
+        &write_presolved_model_file, kHighsFilenameDefault);
+    records.push_back(record_string);
+
+    record_bool = new OptionRecordBool(
+        "write_presolved_model_to_file", "Write the presolved model to a file",
+        advanced, &write_presolved_model_to_file, false);
+    records.push_back(record_bool);
+
     record_bool = new OptionRecordBool(
         "mip_detect_symmetry", "Whether MIP symmetry should be detected",
         advanced, &mip_detect_symmetry, true);
@@ -790,6 +977,13 @@ class HighsOptions : public HighsOptionsStruct {
         "MIP solver max number of nodes where estimate is above cutoff bound",
         advanced, &mip_max_stall_nodes, 0, kHighsIInf, kHighsIInf);
     records.push_back(record_int);
+
+    record_int = new OptionRecordInt(
+        "mip_max_start_nodes",
+        "MIP solver max number of nodes when completing a partial MIP start",
+        advanced, &mip_max_start_nodes, 0, 500, kHighsIInf);
+    records.push_back(record_int);
+
 #ifdef HIGHS_DEBUGSOL
     record_string = new OptionRecordString(
         "mip_debug_solution_file",
@@ -813,12 +1007,23 @@ class HighsOptions : public HighsOptionsStruct {
     record_string = new OptionRecordString(
         "mip_improving_solution_file",
         "File for reporting improving MIP solutions: not reported for an empty "
-        "string \"\"",
+        "string \\\"\\\"",
         advanced, &mip_improving_solution_file, kHighsFilenameDefault);
     records.push_back(record_string);
 
+    record_bool = new OptionRecordBool(
+        "mip_root_presolve_only",
+        "Whether MIP presolve is only applied at the root node", advanced,
+        &mip_root_presolve_only, false);
+    records.push_back(record_bool);
+
     record_int = new OptionRecordInt(
-        "mip_max_leaves", "MIP solver max number of leave nodes", advanced,
+        "mip_lifting_for_probing", "Level of lifting for probing that is used",
+        advanced, &mip_lifting_for_probing, -1, -1, kHighsIInf);
+    records.push_back(record_int);
+
+    record_int = new OptionRecordInt(
+        "mip_max_leaves", "MIP solver max number of leaf nodes", advanced,
         &mip_max_leaves, 0, kHighsIInf, kHighsIInf);
     records.push_back(record_int);
 
@@ -933,17 +1138,50 @@ class HighsOptions : public HighsOptionsStruct {
         &pdlp_d_gap_tol, 1e-12, 1e-4, kHighsInf);
     records.push_back(record_double);
 
+    record_int = new OptionRecordInt(
+        "qp_iteration_limit", "Iteration limit for QP solver", advanced,
+        &qp_iteration_limit, 0, kHighsIInf, kHighsIInf);
+    records.push_back(record_int);
+
+    record_int = new OptionRecordInt("qp_nullspace_limit",
+                                     "Nullspace limit for QP solver", advanced,
+                                     &qp_nullspace_limit, 0, 4000, kHighsIInf);
+    records.push_back(record_int);
+
+    record_int = new OptionRecordInt(
+        "iis_strategy",
+        "Strategy for IIS calculation: "
+        //        "Use LP and p"
+        "Prioritise rows (default) / "
+        //        "Use LP and p"
+        "Prioritise columns"
+        //        "Use unbounded dual ray and prioritise low number of rows
+        //        (default) / " "Use ray and prioritise low numbers of columns "
+        " (0/1"
+        //        "/2/3)",
+        ")",
+        advanced, &iis_strategy, kIisStrategyMin, kIisStrategyFromLpRowPriority,
+        kIisStrategyMax);
+    records.push_back(record_int);
+
+    record_bool = new OptionRecordBool(
+        "blend_multi_objectives",
+        "Blend multiple objectives or apply lexicographically: Default = true",
+        advanced, &blend_multi_objectives, true);
+    records.push_back(record_bool);
+
     // Fix the number of user settable options
     num_user_settable_options_ = static_cast<HighsInt>(records.size());
 
     // Advanced options
     advanced = true;
 
-    record_int = new OptionRecordInt(
-        "log_dev_level",
-        "Output development messages: 0 => none; 1 => info; 2 => verbose",
-        advanced, &log_dev_level, kHighsLogDevLevelMin, kHighsLogDevLevelNone,
-        kHighsLogDevLevelMax);
+    record_int =
+        new OptionRecordInt("log_dev_level",
+                            "Output development messages: 0 => none; 1 => "
+                            "info; 2 => detailed; 3 => verbose",
+                            advanced, &log_dev_level, kHighsLogDevLevelMin,
+                            kHighsLogDevLevelNone, kHighsLogDevLevelMax);
     records.push_back(record_int);
 
     record_bool = new OptionRecordBool("log_githash", "Log the githash",
@@ -977,6 +1215,11 @@ class HighsOptions : public HighsOptionsStruct {
     record_bool = new OptionRecordBool("mps_parser_type_free",
                                        "Use the free format MPS file reader",
                                        advanced, &mps_parser_type_free, true);
+    records.push_back(record_bool);
+
+    record_bool = new OptionRecordBool("use_warm_start",
+                                       "Use any warm start that is available",
+                                       advanced, &use_warm_start, true);
     records.push_back(record_bool);
 
     record_int =
@@ -1137,6 +1380,11 @@ class HighsOptions : public HighsOptionsStruct {
     record_bool = new OptionRecordBool(
         "presolve_rule_logging", "Log effectiveness of presolve rules for LP",
         advanced, &presolve_rule_logging, false);
+    records.push_back(record_bool);
+
+    record_bool = new OptionRecordBool("presolve_remove_slacks",
+                                       "Remove slacks after presolve", advanced,
+                                       &presolve_remove_slacks, false);
     records.push_back(record_bool);
 
     record_int = new OptionRecordInt(

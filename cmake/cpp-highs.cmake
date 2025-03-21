@@ -48,27 +48,48 @@ install(FILES ${PROJECT_BINARY_DIR}/highs_export.h
 
 string (TOLOWER ${PROJECT_NAME} lower)
 
-install(TARGETS highs
-   EXPORT ${lower}-targets
-   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/highs
-   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/highs)
-  
-# Add library targets to the build-tree export set
-export(TARGETS highs
-  NAMESPACE ${PROJECT_NAMESPACE}::highs
-  FILE "${HIGHS_BINARY_DIR}/highs-targets.cmake")
+if (NOT CUPDLP_GPU)
+  install(TARGETS highs
+      EXPORT ${lower}-targets
+      INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/highs
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/highs)
+      
+  if (NOT HIGHS_COVERAGE)
+    # Add library targets to the build-tree export set
+    export(TARGETS highs
+      NAMESPACE ${PROJECT_NAMESPACE}::highs
+      FILE "${HIGHS_BINARY_DIR}/highs-targets.cmake")
+  endif()
+else()
+  install(TARGETS highs cudalin
+      EXPORT ${lower}-targets
+      INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/highs
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/highs)
+      
+  if (NOT HIGHS_COVERAGE)
+    # Add library targets to the build-tree export set
+    export(TARGETS highs cudalin
+      NAMESPACE ${PROJECT_NAMESPACE}::highs
+      FILE "${HIGHS_BINARY_DIR}/highs-targets.cmake")
+  endif()
+endif()
 
-install(EXPORT ${lower}-targets
-  NAMESPACE ${PROJECT_NAMESPACE}::
-  FILE highs-targets.cmake
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${lower})
-# install(FILES "${HIGHS_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/highs-config.cmake"
-#   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/highs)
-# install(FILES "${HIGHS_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/highs.pc"
-#   DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+if (NOT HIGHS_COVERAGE)
+  install(EXPORT ${lower}-targets
+    NAMESPACE ${PROJECT_NAMESPACE}::
+    FILE highs-targets.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${lower})
+  # install(FILES "${HIGHS_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/highs-config.cmake"
+  #   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/highs)
+  # install(FILES "${HIGHS_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/highs.pc"
+  #   DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endif()
 
 
 include(CMakePackageConfigHelpers)
@@ -81,13 +102,13 @@ write_basic_package_version_file(
   "${PROJECT_BINARY_DIR}/${PACKAGE_PREFIX}-config-version.cmake"
   COMPATIBILITY SameMajorVersion)
 
-# add_cxx_test()
+# highs_cxx_test()
 # CMake function to generate and build C++ test.
 # Parameters:
 #  the C++ filename
 # e.g.:
-# add_cxx_test(foo.cc)
-function(add_cxx_test FILE_NAME)
+# highs_cxx_test(foo.cc)
+function(highs_cxx_test FILE_NAME)
   message(STATUS "Configuring test ${FILE_NAME}: ...")
   get_filename_component(TEST_NAME ${FILE_NAME} NAME_WE)
   get_filename_component(COMPONENT_DIR ${FILE_NAME} DIRECTORY)
@@ -114,13 +135,13 @@ endfunction()
 # set_target_properties(highs PROPERTIES INTERFACE_${PROJECT_NAME}_MAJOR_VERSION ${PROJECT_VERSION_MAJOR})
 # set_target_properties(highs PROPERTIES COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION)
 
-# add_c_test()
+# highs_c_test()
 # CMake function to generate and build C++ test.
 # Parameters:
 #  the C filename
 # e.g.:
-# add_c_test(foo.c)
-function(add_c_test FILE_NAME)
+# highs_c_test(foo.c)
+function(highs_c_test FILE_NAME)
   message(STATUS "Configuring test ${FILE_NAME}: ...")
   get_filename_component(TEST_NAME ${FILE_NAME} NAME_WE)
   get_filename_component(COMPONENT_DIR ${FILE_NAME} DIRECTORY)

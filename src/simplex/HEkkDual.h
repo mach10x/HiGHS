@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -388,6 +385,7 @@ class HEkkDual {
   HighsInt solver_num_row;
   HighsInt solver_num_col;
   HighsInt solver_num_tot;
+  double inv_solver_num_row;  // 1.0 / solver_num_row
 
   const HighsSparseMatrix* a_matrix;
   const HSimplexNla* simplex_nla;
@@ -485,7 +483,7 @@ class HEkkDual {
    * @brief Multiple minor iteration data
    */
   struct MFinish {
-    HighsInt move_in;
+    int8_t move_in;
     double shiftOut;
     std::vector<HighsInt> flipList;
 

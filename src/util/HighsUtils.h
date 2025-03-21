@@ -2,9 +2,6 @@
 /*                                                                       */
 /*    This file is part of the HiGHS linear optimization suite           */
 /*                                                                       */
-/*    Written and engineered 2008-2024 by Julian Hall, Ivet Galabova,    */
-/*    Leona Gottwald and Michael Feldmeier                               */
-/*                                                                       */
 /*    Available as open-source under the MIT License                     */
 /*                                                                       */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -207,4 +204,14 @@ void highsAssert(const bool assert_condition, const std::string message = "");
 // If pause_condition is true, then keyboard input is required. Allows
 // breakpoints in VScode where optimization might prevent them.
 bool highsPause(const bool pause_condition, const std::string message = "");
+
+// Utility for computing fractional part
+template <typename T>
+inline T fractionality(T input, T* intval = nullptr) {
+  using std::abs;
+  using std::round;
+  T val = round(input);
+  if (intval != nullptr) *intval = val;
+  return abs(input - val);
+}
 #endif  // UTIL_HIGHSUTILS_H_
